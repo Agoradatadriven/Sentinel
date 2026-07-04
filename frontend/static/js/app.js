@@ -6,6 +6,12 @@
 (function () {
   "use strict";
 
+  // Apply the saved theme immediately (before paint) to avoid a flash. Standalone pages
+  // (login/kiosk/scanner) have their own self-contained designs, so they stay on light tokens.
+  const THEME_KEY = "sentinel-theme";
+  const _standalone = document.body && document.body.dataset.shell === "off";
+  document.documentElement.setAttribute("data-theme", _standalone ? "light" : (localStorage.getItem(THEME_KEY) || "light"));
+
   const ROLE_RANK = { intern: 1, employee: 1, team_lead: 2, account_manager: 3, admin: 4, super_admin: 5 };
 
   // ---- Inline icon set (Atrium stroked style: 24x24, stroke-width 1.8) ----
@@ -37,6 +43,8 @@
     inbox: P('<path d="M3 12h5l1.5 3h5L21 12M3 12l3-8h12l3 8v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'),
     sparkle: P('<path d="M12 3l1.8 4.7L18.5 9l-4.7 1.8L12 15l-1.8-4.2L5.5 9l4.7-1.3z"/>'),
     sliders: P('<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M18 18h2"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="16" cy="18" r="2"/>'),
+    sun: P('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'),
+    moon: P('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'),
   };
 
   const AGORA_LOGO =
@@ -167,6 +175,10 @@
           </div>
           <div class="top-right">
             ${USER.role === "super_admin" ? '<span class="pill amber" title="You are viewing as Super Admin — full access to every module and record">Super Admin view</span>' : ""}
+            <div class="theme-toggle" id="theme-toggle">
+              <button data-set-theme="light" title="Light mode">${ICON.sun}</button>
+              <button data-set-theme="dark" title="Dark mode">${ICON.moon}</button>
+            </div>
             <div class="clock" id="clock"></div>
             <div style="position:relative">
               <button class="iconbtn" id="bell" aria-label="Notifications">${ICON.bell}<span class="bdot" id="bell-count" style="display:none"></span></button>
@@ -185,6 +197,18 @@
     const toggle = () => { side.classList.toggle("open"); scrim.classList.toggle("open"); };
     qs("#ham").onclick = toggle; scrim.onclick = toggle;
     qs("#logout").onclick = async () => { await api("/api/auth/logout", { method: "POST" }); location.href = "/login"; };
+    // Light/dark toggle
+    function paintTheme() {
+      const t = document.documentElement.getAttribute("data-theme") || "light";
+      qsa("#theme-toggle button").forEach((b) => b.classList.toggle("on", b.dataset.setTheme === t));
+    }
+    qsa("#theme-toggle button").forEach((b) => b.onclick = () => {
+      const t = b.dataset.setTheme;
+      document.documentElement.setAttribute("data-theme", t);
+      try { localStorage.setItem(THEME_KEY, t); } catch (e) {}
+      paintTheme();
+    });
+    paintTheme();
     const uc = qs("#user-card"); if (uc) uc.onclick = openChangePassword;
 
     startClock();

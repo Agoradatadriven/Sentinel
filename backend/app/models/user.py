@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..database import Base
@@ -42,6 +42,8 @@ class User(Base):
     shift_start: Mapped[str | None] = mapped_column(String(5), nullable=True)
     shift_end: Mapped[str | None] = mapped_column(String(5), nullable=True)
     hired_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Monthly base salary (Super Admin only — never exposed via public serializers).
+    monthly_salary: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, onupdate=utcnow)
 

@@ -49,6 +49,41 @@
   --sidebar-w: 248px;
 }
 
+/* ============ DARK MODE (Agora dark green-black + glow) ============ */
+:root[data-theme="dark"] {
+  --ink: #F4F6F5; --text: #E7ECE9; --charcoal: #D5DAD7; --sub: #9DA9A2; --muted: #6E7B73;
+  --white: #131E17;                 /* surface used by buttons/iconbtns/panels */
+  --canvas: #0B120E; --card: #111C15; --input: #17231B; --row-alt: rgba(255,255,255,.025); --hover: rgba(84,185,72,.12);
+  --line: rgba(255,255,255,.09); --line-strong: rgba(255,255,255,.18);
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.45);
+  --shadow-lg: 0 2px 8px rgba(0,0,0,.5), 0 22px 55px rgba(0,0,0,.6);
+  --glow-green: 0 6px 20px rgba(84,185,72,.40);
+  --glow-green-lg: 0 10px 38px rgba(84,185,72,.55);
+}
+:root[data-theme="dark"] body {
+  background:
+    radial-gradient(1100px 620px at 8% -12%, rgba(84,185,72,0.22), transparent 55%),
+    radial-gradient(760px 520px at 104% 108%, rgba(84,185,72,0.10), transparent 55%),
+    #0A0F0C;
+}
+:root[data-theme="dark"] .side { background: linear-gradient(180deg, #0E1712 0%, #0A100C 100%); }
+:root[data-theme="dark"] .top { background: rgba(11,18,14,.72); }
+:root[data-theme="dark"] .user-card { background: linear-gradient(165deg, #14201A 0%, #0E1712 100%); }
+:root[data-theme="dark"] .notif-panel,
+:root[data-theme="dark"] .modal { background: var(--card); }
+:root[data-theme="dark"] .col { background: rgba(255,255,255,.02); }
+:root[data-theme="dark"] .tcard { background: #14201A; }
+:root[data-theme="dark"] input, :root[data-theme="dark"] select, :root[data-theme="dark"] textarea { color: var(--text); }
+:root[data-theme="dark"] input:focus, :root[data-theme="dark"] select:focus, :root[data-theme="dark"] textarea:focus { background: #17231B; box-shadow: 0 0 0 3px rgba(84,185,72,.22); border-color: var(--green); }
+:root[data-theme="dark"] .notif.unread { background: rgba(84,185,72,.12); }
+:root[data-theme="dark"] .skeleton { background: linear-gradient(90deg, #17231B 25%, #1e2c23 37%, #17231B 63%); background-size: 400% 100%; }
+
+/* Light/Dark toggle pill (topbar) */
+.theme-toggle { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: var(--pill); border: 1px solid var(--line); background: var(--input); }
+.theme-toggle button { width: 30px; height: 26px; display: grid; place-items: center; border: none; background: transparent; color: var(--muted); border-radius: var(--pill); cursor: pointer; }
+.theme-toggle button .svg-ic { width: 15px; height: 15px; }
+.theme-toggle button.on { background: var(--grad-green); color: #fff; box-shadow: var(--glow-green); }
+
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {

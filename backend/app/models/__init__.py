@@ -19,6 +19,7 @@ from .client import Client
 from .gym import ExerciseLibrary, GymExercise, GymLog
 from .leave import LeaveBalance, LeaveRequest, LeaveType
 from .notification import Notification
+from .payroll import PayrollEntry
 from .system import AuditLog, SystemSetting
 from .task import AtriumApproval, Task, TaskComment, TaskHistory
 from .user import QRToken, Team, User
@@ -42,6 +43,7 @@ __all__ = [
     "GymExercise",
     "ExerciseLibrary",
     "Notification",
+    "PayrollEntry",
     "AuditLog",
     "SystemSetting",
 ]
