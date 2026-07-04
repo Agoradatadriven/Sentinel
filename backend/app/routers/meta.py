@@ -1,0 +1,56 @@
+"""Reference data for the frontend: teams, clients, and the enum vocabularies used in dropdowns."""
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from ..constants import (
+    ALL_ROLES,
+    GYM_DAY_TYPES,
+    PRIORITIES,
+    ROLE_LABELS,
+    SET_TYPES,
+    TASK_LABELS,
+    TASK_STATUSES,
+)
+from ..database import get_db
+from ..models import Client, Team, User
+from ..security import get_current_user, require_roles
+from ..serializers import client_dict, team_dict
+
+router = APIRouter(prefix="/api", tags=["meta"])
+
+
+@router.get("/teams")
+def teams(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    return [team_dict(t) for t in db.execute(select(Team).order_by(Team.name)).scalars().all()]
+
+
+@router.get("/clients")
+def clients(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    return [client_dict(c) for c in db.execute(select(Client).order_by(Client.name)).scalars().all()]
+
+
+@router.post("/clients", dependencies=[Depends(require_roles("account_manager", "admin", "super_admin"))])
+def create_client(payload: dict, db: Session = Depends(get_db)):
+    name = (payload or {}).get("name", "").strip()
+    if not name:
+        return {"error": "name required"}
+    c = Client(name=name, contact_email=payload.get("contact_email"), atrium_client_id=payload.get("atrium_client_id"))
+    db.add(c)
+    db.commit()
+    return client_dict(c)
+
+
+@router.get("/vocab")
+def vocab(user: User = Depends(get_current_user)):
+    """All enum vocabularies in one shot — labels, statuses, priorities, day types, etc."""
+    return {
+        "roles": [{"value": r, "label": ROLE_LABELS[r]} for r in ALL_ROLES],
+        "task_statuses": TASK_STATUSES,
+        "priorities": PRIORITIES,
+        "task_labels": TASK_LABELS,
+        "gym_day_types": GYM_DAY_TYPES,
+        "set_types": SET_TYPES,
+    }

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Attendance Kiosk · Sentinel</title>
+  <link rel="icon" href="/static/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="manifest" href="/manifest.json">
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    body { display: grid; place-items: center; min-height: 100vh; padding: 20px; }
+    .kiosk { width: 100%; max-width: 620px; }
+    .k-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .k-logo svg { height: 30px; }
+    .online { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 700; padding: 6px 12px; border-radius: 999px; }
+    .online.on { background: var(--green-bg); color: var(--green-d); }
+    .online.off { background: #FEF3E6; color: var(--warn); }
+    .online .dot { width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
+    .k-card { background: #fff; border: 1px solid var(--line); border-radius: 22px; box-shadow: var(--shadow-lg); padding: 30px; text-align: center; }
+    .k-clock { font-size: 66px; font-weight: 800; letter-spacing: -2px; font-variant-numeric: tabular-nums; color: var(--ink); line-height: 1; }
+    .k-date { color: var(--sub); font-size: 16px; margin-top: 6px; font-weight: 600; }
+    #reader { margin: 22px auto 0; width: 300px; max-width: 100%; border-radius: 16px; overflow: hidden; }
+    .k-hint { color: var(--muted); font-size: 13.5px; margin-top: 14px; }
+    .manual { margin-top: 16px; display: flex; gap: 8px; justify-content: center; }
+    .manual input { max-width: 260px; }
+    .k-name { font-size: 30px; font-weight: 800; }
+    .k-sub { color: var(--sub); font-size: 15px; margin-top: 4px; }
+    .k-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 24px; }
+    .k-btn { border: none; border-radius: 18px; padding: 26px 16px; font-size: 19px; font-weight: 800; color: #fff; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 8px; transition: transform .1s, filter .1s; }
+    .k-btn:active { transform: scale(.97); } .k-btn:hover { filter: brightness(1.05); }
+    .k-btn:disabled { opacity: .35; cursor: not-allowed; filter: none; }
+    .k-btn.in { background: var(--green); } .k-btn.brk { background: var(--info); }
+    .k-btn.endbrk { background: var(--warn); } .k-btn.out { background: var(--danger); }
+    .k-btn .svg-ic { width: 30px; height: 30px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 8px; }
+    .chip-sel { cursor: pointer; border: 1px solid var(--line); background: var(--input); padding: 8px 14px; border-radius: 999px; font-weight: 700; font-size: 13.5px; }
+    .chip-sel.active { background: var(--sentinel); color: #fff; border-color: var(--sentinel); }
+    .queued { margin-top: 14px; font-size: 13px; color: var(--warn); font-weight: 700; }
+    .big-status { font-size: 22px; font-weight: 800; margin: 10px 0; }
+  </style>
+</head>
+<body data-shell="off" data-mode="kiosk" data-device="kiosk">
+  <div class="kiosk">
+    <div class="k-top">
+      <div class="k-logo" data-brand-logo><svg viewBox="0 0 150 40"><g fill="none" stroke="#1A1B1E" stroke-linecap="round" stroke-linejoin="round"><path d="M3 37 L19 4 L35 37" stroke-width="1.8"/><path d="M12 37 L24 12" stroke-width="1.1" opacity="0.5"/><path d="M11.5 24 L26.5 24" stroke-width="1.6"/></g><text x="48" y="24.5" font-family="Inter,sans-serif" font-size="21" font-weight="600" letter-spacing="3.2" fill="#1A1B1E">AGORA</text><text x="49.5" y="35" font-family="Inter,sans-serif" font-size="7.3" font-weight="700" letter-spacing="3.6" fill="#353535">OPERATIONS</text></svg></div>
+      <div class="online on" id="online"><span class="dot"></span><span id="online-t">Online</span></div>
+    </div>
+    <div class="k-card" id="stage"></div>
+  </div>
+  <script src="/static/js/app.js"></script>
+  <script src="/static/js/kiosk.js"></script>
+</body>
+</html>

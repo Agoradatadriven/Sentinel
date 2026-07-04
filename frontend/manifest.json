@@ -1,0 +1,21 @@
+{
+  "name": "Sentinel — Agora Operations",
+  "short_name": "Sentinel",
+  "description": "Internal operations command center for Agora: attendance, gym, tasks, people, and leave.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#F6F7F9",
+  "theme_color": "#FF6B35",
+  "icons": [
+    { "src": "/static/favicon.png", "sizes": "256x256", "type": "image/png", "purpose": "any" },
+    { "src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Attendance Kiosk", "url": "/kiosk" },
+    { "name": "Task Board", "url": "/tasks" },
+    { "name": "Gym Tracker", "url": "/gym" }
+  ]
+}

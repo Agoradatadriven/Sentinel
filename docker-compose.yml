@@ -1,0 +1,38 @@
+# Sentinel — Postgres + FastAPI app (serves API + frontend).
+#   docker compose up --build
+#   docker compose exec app python seed.py     # first-run seed
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: sentinel
+      POSTGRES_DB: sentinel
+    ports:
+      - "5432:5432"
+    volumes:
+      - sentinel_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentinel"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg2://sentinel:sentinel@db:5432/sentinel
+      JWT_SECRET: change-me-in-production
+      SECURE_COOKIES: "false"
+      DEV_LOGIN_ENABLED: "true"
+      TIMEZONE: Asia/Manila
+    ports:
+      - "8000:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  sentinel_pg:

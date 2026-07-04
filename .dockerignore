@@ -1,0 +1,14 @@
+**/.venv
+**/venv
+**/__pycache__
+**/*.pyc
+**/*.db
+**/*.sqlite*
+backend/.env
+badges/
+deploy/
+*.md
+.git
+.gitignore
+cookies*.txt
+c_*.txt

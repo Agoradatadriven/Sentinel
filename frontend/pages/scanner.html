@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Phone Scanner · Sentinel</title>
+  <link rel="icon" href="/static/favicon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="manifest" href="/manifest.json">
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    body { display: grid; place-items: start center; min-height: 100vh; padding: 16px; }
+    .kiosk { width: 100%; max-width: 460px; }
+    .k-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .k-logo svg { height: 26px; }
+    .badge-sentinel { }
+    .online { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; padding: 5px 11px; border-radius: 999px; }
+    .online.on { background: var(--green-bg); color: var(--green-d); } .online.off { background: #FEF3E6; color: var(--warn); }
+    .online .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    .k-card { background: #fff; border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow-lg); padding: 22px; text-align: center; }
+    .k-clock { font-size: 40px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .k-date { color: var(--sub); font-weight: 600; }
+    #reader { margin: 16px auto 0; width: 100%; border-radius: 14px; overflow: hidden; }
+    .k-hint { color: var(--muted); font-size: 13px; margin-top: 12px; }
+    .manual { margin-top: 14px; display: flex; gap: 8px; }
+    .k-name { font-size: 24px; font-weight: 800; }
+    .k-sub { color: var(--sub); margin-top: 3px; }
+    .k-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
+    .k-btn { border: none; border-radius: 16px; padding: 22px 12px; font-size: 17px; font-weight: 800; color: #fff; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .k-btn:active { transform: scale(.97); } .k-btn:disabled { opacity: .35; }
+    .k-btn.in { background: var(--green); } .k-btn.brk { background: var(--info); } .k-btn.endbrk { background: var(--warn); } .k-btn.out { background: var(--danger); }
+    .k-btn .svg-ic { width: 26px; height: 26px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 8px; }
+    .chip-sel { cursor: pointer; border: 1px solid var(--line); background: var(--input); padding: 7px 13px; border-radius: 999px; font-weight: 700; font-size: 13px; }
+    .chip-sel.active { background: var(--sentinel); color: #fff; border-color: var(--sentinel); }
+    .big-status { font-size: 20px; font-weight: 800; margin: 8px 0; }
+    .queued { margin-top: 12px; font-size: 13px; color: var(--warn); font-weight: 700; }
+  </style>
+</head>
+<body data-shell="off" data-mode="scanner" data-device="admin-phone">
+  <div class="kiosk">
+    <div class="k-top">
+      <div class="row" style="gap:10px"><div class="k-logo" data-brand-logo><svg viewBox="0 0 132 40"><g fill="none" stroke="#1A1B1E" stroke-linecap="round" stroke-linejoin="round"><path d="M3 37 L19 4 L35 37" stroke-width="1.8"/><path d="M12 37 L24 12" stroke-width="1.1" opacity="0.5"/><path d="M11.5 24 L26.5 24" stroke-width="1.6"/></g><text x="48" y="29" font-family="Inter,sans-serif" font-size="22" font-weight="600" letter-spacing="3.4" fill="#1A1B1E">AGORA</text></svg></div><span class="badge-sentinel">Scanner</span></div>
+      <div class="online on" id="online"><span class="dot"></span><span id="online-t">Online</span></div>
+    </div>
+    <div class="k-card" id="stage"></div>
+    <div style="text-align:center;margin-top:14px"><a class="btn sm ghost" href="/dashboard">← Back to Sentinel</a></div>
+  </div>
+  <script src="/static/js/app.js"></script>
+  <script src="/static/js/kiosk.js"></script>
+</body>
+</html>
