@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     google_client_secret: str = ""
     google_redirect_uri: str = "http://localhost:8000/api/auth/google/callback"
 
+    # --- Cron / scheduled jobs --------------------------------------------
+    # Daily auto-processing endpoint (/api/cron/daily) requires this shared secret in the
+    # X-Cron-Key header. Cloud Scheduler sends it. Super Admins can also trigger it while logged in.
+    cron_key: str = ""
+
     # --- Kiosk -------------------------------------------------------------
     # The tablet kiosk is a trusted device: attendance punches are identified by the scanned QR
     # token, not by a logged-in user. In prod, lock these routes to the LAN / a device key.

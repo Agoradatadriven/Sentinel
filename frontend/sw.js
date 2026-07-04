@@ -3,10 +3,11 @@
    always win when online, while the kiosk still works offline from cache. API calls are never
    cached — attendance punches queue in IndexedDB (see kiosk.js) instead.
    Bump CACHE on each meaningful change so old caches are purged on activate. */
-const CACHE = "sentinel-v8";
+const CACHE = "sentinel-v9";
 const CORE = [
   "/static/css/styles.css",
   "/static/js/app.js",
+  "/static/js/charts.js",
   "/static/js/kiosk.js",
   "/static/favicon.svg",
   "/static/img/logo.png",

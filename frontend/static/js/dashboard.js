@@ -27,6 +27,15 @@ window.pageInit = async (S) => {
       ${kpi("Gym this week", k.gym_completed_week, "sessions completed", "", "dumbbell")}
     </div>`;
 
+    html += `<div class="row between" style="margin:0 0 10px;align-items:center">
+      <div class="section-label">Insights</div>
+      ${u.role === "super_admin" ? `<button class="btn sm ghost" id="run-daily" title="Recompute yesterday's attendance and send reminders now">${S.ICON.check}Run daily processing</button>` : ""}
+    </div>
+    <div class="grid" style="grid-template-columns:1fr 1fr;margin-bottom:18px">
+      <div class="card pad" id="chart-attendance"></div>
+      <div class="card pad" id="chart-tasks"></div>
+    </div>`;
+
     html += `<div class="grid" style="grid-template-columns:1fr 1fr">
       <div class="card"><div class="card-head"><h3>Late today</h3><span class="chip">${d.late_today_list.length}</span></div>
         <div class="card-body">${d.late_today_list.length ? d.late_today_list.map((s) => `
@@ -79,4 +88,24 @@ window.pageInit = async (S) => {
       </div>`).join("") : '<div class="empty">No open tasks assigned to you.</div>'}</div></div>`;
 
   view.innerHTML = html;
+
+  // Dashboard charts (admin only) — fetched after paint so the page never blocks on them.
+  if (d.is_admin && window.SentinelCharts) {
+    try {
+      const ins = await S.api("/api/insights");
+      SentinelCharts.attendanceTrend(S.qs("#chart-attendance"), ins.attendance_trend);
+      SentinelCharts.tasksByStatus(S.qs("#chart-tasks"), ins.tasks_by_status);
+    } catch (e) { /* charts are non-critical */ }
+  }
+
+  const rb = S.qs("#run-daily");
+  if (rb) rb.onclick = async () => {
+    rb.disabled = true; const orig = rb.innerHTML; rb.textContent = "Processing…";
+    try {
+      const r = await S.api("/api/cron/daily", { method: "POST" });
+      const a = r.attendance || {}, m = r.reminders || {};
+      S.toast(`Processed ${a.date}: ${a.absent || 0} absent, ${a.on_leave || 0} on leave, ${a.missing_clockout || 0} missing clock-out · ${m.overdue_notified || 0} overdue nudges`, "ok");
+    } catch (e) { S.toast(e.detail || "Couldn't run daily processing", "err"); }
+    finally { rb.disabled = false; rb.innerHTML = orig; }
+  };
 };

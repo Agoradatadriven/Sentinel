@@ -17,6 +17,7 @@ from .routers import (
     admin,
     attendance,
     auth,
+    cron,
     gym,
     leave,
     manage,
@@ -97,7 +98,7 @@ def _startup_safeguards() -> None:
 
 
 # --- API routers -----------------------------------------------------------
-for r in (auth, attendance, gym, tasks, people, leave, notifications, reports, admin, meta, manage, payroll):
+for r in (auth, attendance, gym, tasks, people, leave, notifications, reports, admin, meta, manage, payroll, cron):
     app.include_router(r.router)
 
 

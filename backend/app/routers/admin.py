@@ -99,6 +99,56 @@ def announce(payload: AnnouncementIn, admin: User = Depends(require_min_role("ad
     return {"ok": True, "recipients": sent}
 
 
+# --- Insights (dashboard charts) -------------------------------------------
+_WD = {"mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6}
+
+
+@router.get("/insights")
+def insights(admin: User = Depends(require_min_role("admin")), db: Session = Depends(get_db)):
+    """Aggregates for the dashboard charts: 14-day attendance trend + open tasks by status."""
+    today = today_ph()
+    start = today - timedelta(days=13)
+    smap = settings_svc.get_map(db)
+    workdays = {_WD[d.strip().lower()[:3]] for d in smap.get("work_days", "Mon,Tue,Wed,Thu,Fri").split(",")
+                if d.strip()[:3].lower() in _WD} or {0, 1, 2, 3, 4}
+    headcount = db.execute(select(func.count(User.id)).where(User.is_active.is_(True))).scalar() or 0
+
+    summaries = db.execute(
+        select(DailyAttendanceSummary).where(
+            DailyAttendanceSummary.date >= start, DailyAttendanceSummary.date <= today
+        )
+    ).scalars().all()
+    by_day: dict = {}
+    for s in summaries:
+        b = by_day.setdefault(s.date, {"ontime": 0, "late": 0, "onleave": 0})
+        if s.status == "Late":
+            b["late"] += 1
+        elif s.status == "OnLeave":
+            b["onleave"] += 1
+        elif s.clock_in:  # OnTime, HalfDay, MissingClockOut all count as present
+            b["ontime"] += 1
+
+    trend = []
+    for i in range(14):
+        day = start + timedelta(days=i)
+        b = by_day.get(day, {"ontime": 0, "late": 0, "onleave": 0})
+        is_workday = day.weekday() in workdays
+        # Absent only makes sense for past working days (today is still in progress).
+        absent = max(0, headcount - b["ontime"] - b["late"] - b["onleave"]) if (is_workday and day < today) else 0
+        trend.append({
+            "date": day.isoformat(),
+            "ontime": b["ontime"], "late": b["late"], "absent": absent,
+            "workday": is_workday,
+        })
+
+    status_rows = db.execute(
+        select(Task.status, func.count(Task.id)).where(Task.status != TASK_COMPLETED).group_by(Task.status)
+    ).all()
+    tasks_by_status = [{"status": s, "count": c} for s, c in sorted(status_rows, key=lambda r: -r[1])]
+
+    return {"attendance_trend": trend, "tasks_by_status": tasks_by_status, "headcount": headcount}
+
+
 # --- Dashboard -------------------------------------------------------------
 @router.get("/dashboard")
 def dashboard(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
