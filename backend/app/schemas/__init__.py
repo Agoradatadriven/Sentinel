@@ -192,3 +192,20 @@ class SettingsIn(BaseModel):
 class AnnouncementIn(BaseModel):
     title: str
     body: str | None = None
+
+
+# --- Payroll (Super Admin only) --------------------------------------------
+class SalaryIn(BaseModel):
+    monthly_salary: float = Field(ge=0)
+
+
+class PayrollAdjustIn(BaseModel):
+    period: str  # "YYYY-MM"
+    bonus: float = Field(default=0, ge=0)
+    deduction: float = Field(default=0, ge=0)
+    note: str | None = None
+
+
+class PayrollFinalizeIn(BaseModel):
+    period: str
+    finalized: bool = True

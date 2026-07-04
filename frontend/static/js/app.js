@@ -45,6 +45,7 @@
     sliders: P('<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M18 18h2"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="16" cy="18" r="2"/>'),
     sun: P('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>'),
     moon: P('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'),
+    wallet: P('<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 9h18M16 13.5h.01"/><path d="M16 6V4.5a1.5 1.5 0 0 0-2-1.4L4.5 5.5"/>'),
   };
 
   const AGORA_LOGO =
@@ -65,6 +66,7 @@
     { href: "/reports", label: "Reports", icon: "chart", min: "team_lead" },
     { href: "/scanner", label: "Scanner", icon: "qr", roles: ["super_admin"] },
     { href: "/manage", label: "Manage", icon: "sliders", roles: ["super_admin"] },
+    { href: "/payroll", label: "Payroll", icon: "wallet", roles: ["super_admin"] },
     { href: "/settings", label: "Settings", icon: "gear", min: "admin" },
   ];
 

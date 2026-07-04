@@ -22,6 +22,7 @@ from .routers import (
     manage,
     meta,
     notifications,
+    payroll,
     people,
     reports,
     tasks,
@@ -96,7 +97,7 @@ def _startup_safeguards() -> None:
 
 
 # --- API routers -----------------------------------------------------------
-for r in (auth, attendance, gym, tasks, people, leave, notifications, reports, admin, meta, manage):
+for r in (auth, attendance, gym, tasks, people, leave, notifications, reports, admin, meta, manage, payroll):
     app.include_router(r.router)
 
 
@@ -143,6 +144,7 @@ _PAGES = {
     "/reports": "reports.html",
     "/settings": "settings.html",
     "/manage": "manage.html",
+    "/payroll": "payroll.html",
     "/kiosk": "kiosk.html",
     "/scanner": "scanner.html",
 }
