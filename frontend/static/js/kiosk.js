@@ -1,12 +1,15 @@
 /* Attendance kiosk + Super-Admin phone scanner.
-   States: idle (auto-scan) → scanned (four big buttons) → confirm (auto-reset 5s).
+   Kiosk: idle → scanned (big buttons) → confirm (auto-reset). Camera restarts each idle.
+   Scanner (Super Admin): the camera is ALWAYS ON — it stays live continuously; scan detection
+   pauses only while a punch is being confirmed, then resumes. Works on phone (back cam) or laptop.
    Offline: punches queue in IndexedDB and sync every 30s when back online. */
 window.pageInit = async (S) => {
   const MODE = document.body.dataset.mode;         // "kiosk" | "scanner"
   const DEVICE = document.body.dataset.device;      // "kiosk" | "admin-phone"
+  const PERSIST = MODE === "scanner";               // keep the camera always on for the scanner
   const stage = S.qs("#stage");
   const LATE_REASONS = ["Heavy traffic", "Medical", "Personal", "Client meeting", "Transport issue"];
-  let scanner = null, scanning = false, resetTimer = null;
+  let scanner = null, scanning = false, resetTimer = null, shellBuilt = false;
 
   // --- Scanner mode is Super-Admin only -----------------------------------
   if (MODE === "scanner") {
@@ -48,7 +51,7 @@ window.pageInit = async (S) => {
       await S.api("/api/attendance/offline-sync", { method: "POST", body: { punches } });
       await clearQueue();
       S.toast(`Synced ${punches.length} offline punch(es)`, "ok");
-      if (!scanning) idle();
+      if (PERSIST) updateQueueBadge(); else if (!scanning) idle();
     } catch (e) { /* stay queued; retry next tick */ }
   }
   setInterval(syncQueue, 30000);
@@ -59,28 +62,89 @@ window.pageInit = async (S) => {
     return `<div class="k-clock" id="kclock">${now.toLocaleTimeString("en-PH", { timeZone: "Asia/Manila", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true })}</div>
       <div class="k-date">${now.toLocaleDateString("en-PH", { timeZone: "Asia/Manila", weekday: "long", month: "long", day: "numeric" })}</div>`;
   }
-  let clockInt = setInterval(() => { const c = S.qs("#kclock"); if (c) c.textContent = new Date().toLocaleTimeString("en-PH", { timeZone: "Asia/Manila", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true }); }, 1000);
+  setInterval(() => { const c = S.qs("#kclock"); if (c) c.textContent = new Date().toLocaleTimeString("en-PH", { timeZone: "Asia/Manila", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true }); }, 1000);
 
-  // --- Idle: auto-scan -----------------------------------------------------
+  // --- Camera lifecycle ----------------------------------------------------
+  async function startScanner() {
+    if (typeof Html5Qrcode === "undefined") return;
+    try { scanner = new Html5Qrcode("reader"); } catch (e) { return; }
+    const config = { fps: 10, qrbox: { width: 240, height: 240 } };
+    const onScan = (decoded) => { if (scanning) { scanning = false; handleToken(decoded); } };
+    scanning = true;
+    try {
+      await scanner.start({ facingMode: "environment" }, config, onScan, () => {});
+    } catch (e1) {
+      // No back camera (e.g. a laptop) → fall back to the first available camera.
+      try {
+        const cams = await Html5Qrcode.getCameras();
+        if (cams && cams.length) await scanner.start(cams[0].id, config, onScan, () => {});
+        else throw e1;
+      } catch (e2) {
+        const r = S.qs("#reader"); if (r) r.innerHTML = '<div class="muted" style="padding:22px 8px">Camera unavailable here — use “type badge code” below.</div>';
+        scanner = null; scanning = false;
+      }
+    }
+  }
+  async function stopScanner() {
+    scanning = false;
+    if (scanner) { try { await scanner.stop(); scanner.clear(); } catch (e) {} scanner = null; }
+  }
+  function pauseScanning() { scanning = false; if (scanner) { try { scanner.pause(false); } catch (e) {} } }  // keep camera ON, stop detecting
+  function resumeScanning() { if (scanner) { try { scanner.resume(); } catch (e) {} scanning = true; } }
+
+  // Where transient UI (scanned card / confirm) renders: a panel below the live camera in scanner
+  // mode; the whole stage in kiosk mode.
+  function showTransient(html) {
+    if (PERSIST) { const p = S.qs("#panel"); if (p) p.innerHTML = html; const h = S.qs("#k-hint"); if (h) h.style.display = "none"; }
+    else stage.innerHTML = html;
+  }
+
+  async function updateQueueBadge() {
+    if (!PERSIST) return;
+    const el = S.qs("#qbadge"); if (!el) return;
+    const qc = await queueCount();
+    if (qc) { el.textContent = `${qc} punch(es) waiting to sync`; el.style.display = ""; } else el.style.display = "none";
+  }
+
+  // --- Scanner persistent shell (built once; camera never torn down) -------
+  function buildScannerShell() {
+    stage.innerHTML = `${clockHTML()}
+      <div id="reader" style="margin-top:14px"></div>
+      <div class="k-hint" id="k-hint">Point the camera at an employee's QR badge</div>
+      <div id="panel"></div>
+      <div class="manual"><input id="manual" placeholder="…or type badge code" autocomplete="off"><button class="btn primary" id="manual-go">Go</button></div>
+      <div id="qbadge" class="queued" style="display:none"></div>
+      <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
+        <button class="btn ghost" id="assign-qr">${S.ICON.qr}Generate / assign QR badge</button></div>`;
+    S.qs("#manual-go").onclick = () => { const t = S.qs("#manual").value.trim(); if (t) handleToken(t); };
+    S.qs("#manual").onkeydown = (e) => { if (e.key === "Enter") S.qs("#manual-go").click(); };
+    S.qs("#assign-qr").onclick = openAssignQr;
+  }
+
+  // --- Idle ----------------------------------------------------------------
   async function idle() {
     clearTimeout(resetTimer);
+    if (PERSIST) {
+      if (!shellBuilt) { buildScannerShell(); shellBuilt = true; await startScanner(); }
+      else { const p = S.qs("#panel"); if (p) p.innerHTML = ""; const h = S.qs("#k-hint"); if (h) h.style.display = ""; resumeScanning(); }
+      updateQueueBadge();
+      return;
+    }
+    // Kiosk mode: rebuild the stage + (re)start the camera each idle.
     const qc = await queueCount();
     stage.innerHTML = `${clockHTML()}
       <div id="reader"></div>
-      <div class="k-hint">Scan your Agora badge to punch ${MODE === "scanner" ? "(admin phone)" : ""}</div>
+      <div class="k-hint">Scan your Agora badge to punch</div>
       <div class="manual"><input id="manual" placeholder="…or type badge code" autocomplete="off"><button class="btn primary" id="manual-go">Go</button></div>
-      ${qc ? `<div class="queued">${qc} punch(es) waiting to sync</div>` : ""}
-      ${MODE === "scanner" ? `<div style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
-        <button class="btn ghost" id="assign-qr">${S.ICON.qr}Generate / assign QR badge</button></div>` : ""}`;
+      ${qc ? `<div class="queued">${qc} punch(es) waiting to sync</div>` : ""}`;
     S.qs("#manual-go").onclick = () => { const t = S.qs("#manual").value.trim(); if (t) handleToken(t); };
     S.qs("#manual").onkeydown = (e) => { if (e.key === "Enter") S.qs("#manual-go").click(); };
-    if (MODE === "scanner" && S.qs("#assign-qr")) S.qs("#assign-qr").onclick = openAssignQr;
-    startScanner();
+    await startScanner();
   }
 
   // --- Scanner-only: generate + assign a QR badge to an employee -----------
   async function openAssignQr() {
-    await stopScanner();
+    pauseScanning();  // keep the camera on, just stop detecting while the modal is open
     let people = [];
     try { people = await S.api("/api/people"); } catch (e) { S.toast(e.detail || "Couldn't load employees", "err"); idle(); return; }
     const m = S.modal({
@@ -113,31 +177,14 @@ window.pageInit = async (S) => {
     };
   }
 
-  function startScanner() {
-    if (typeof Html5Qrcode === "undefined") return;
-    try {
-      scanner = new Html5Qrcode("reader");
-      scanning = true;
-      scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 220, height: 220 } },
-        (decoded) => { if (scanning) { scanning = false; handleToken(decoded); } },
-        () => {}
-      ).catch(() => { const r = S.qs("#reader"); if (r) r.style.display = "none"; });
-    } catch (e) { const r = S.qs("#reader"); if (r) r.style.display = "none"; }
-  }
-  async function stopScanner() {
-    scanning = false;
-    if (scanner) { try { await scanner.stop(); scanner.clear(); } catch (e) {} scanner = null; }
-  }
-
   // --- Handle a scanned/typed token ---------------------------------------
   async function handleToken(token) {
-    await stopScanner();
+    if (PERSIST) pauseScanning(); else await stopScanner();
     let info;
     try { info = await S.api("/api/attendance/scan", { method: "POST", body: { token } }); }
     catch (e) {
-      // Offline? We can't resolve the token, but we can still queue a raw punch attempt is not possible without a chosen action. Show error.
-      if (e.status === undefined) stage.innerHTML = confirmCard("err", "Offline", "Cannot look up badge while offline. Reconnect and try again.");
-      else stage.innerHTML = confirmCard("err", "Not recognised", e.detail || "Unknown badge.");
+      if (e.status === undefined) showTransient(confirmCard("err", "Offline", "Cannot look up badge while offline. Reconnect and try again."));
+      else showTransient(confirmCard("err", "Not recognised", e.detail || "Unknown badge."));
       resetTimer = setTimeout(idle, 3500); return;
     }
     renderScanned(token, info);
@@ -155,7 +202,7 @@ window.pageInit = async (S) => {
     const btn = (action, cls, icon, label, enabled) =>
       `<button class="k-btn ${cls}" data-action="${action}" ${enabled ? "" : "disabled"}>${S.ICON[icon]}${label}</button>`;
     const stateLabel = { none: "Not clocked in", in: "Clocked in", on_break: "On break", out: "Clocked out" }[info.state];
-    stage.innerHTML = `
+    showTransient(`
       ${S.avatar(info.user, "lg")}
       <div class="k-name" style="margin-top:12px">${S.esc(info.user.name)}</div>
       <div class="k-sub">${S.esc(info.team_name || info.role_label)} · <span class="pill grey">${stateLabel}</span></div>
@@ -166,10 +213,10 @@ window.pageInit = async (S) => {
         ${btn("clock_out", "out", "logout", "Clock Out", va.includes("clock_out"))}
       </div>
       <div id="extra" style="margin-top:16px"></div>
-      <button class="btn ghost" id="cancel" style="margin-top:14px">Cancel</button>`;
+      <button class="btn ghost" id="cancel" style="margin-top:14px">Cancel</button>`);
     S.qs("#cancel").onclick = idle;
     S.qsa(".k-btn:not([disabled])").forEach((b) => b.onclick = () => onAction(token, info, b.dataset.action));
-    resetTimer = setTimeout(idle, 20000); // auto-return if idle at the button screen
+    resetTimer = setTimeout(idle, 20000);
   }
 
   function onAction(token, info, action) {
@@ -200,13 +247,13 @@ window.pageInit = async (S) => {
     try {
       const res = await S.api("/api/attendance/event", { method: "POST", body: payload });
       const late = res.late_status === "Late" ? ` · ${res.late_minutes}m late` : "";
-      stage.innerHTML = confirmCard("ok", label + "!", S.fmtTime(res.summary.clock_in || res.summary.clock_out) + late);
+      showTransient(confirmCard("ok", label + "!", S.fmtTime(res.summary.clock_in || res.summary.clock_out) + late));
     } catch (e) {
-      if (e.status === undefined) { // network failure → queue offline
+      if (e.status === undefined) {
         await enqueue({ token, action, client_time: new Date().toISOString(), late_reason: payload.late_reason, handover_note: payload.handover_note });
-        stage.innerHTML = confirmCard("warn", "Saved offline", "Will sync automatically when back online.");
+        showTransient(confirmCard("warn", "Saved offline", "Will sync automatically when back online."));
       } else {
-        stage.innerHTML = confirmCard("err", "Couldn't punch", e.detail || "Try again.");
+        showTransient(confirmCard("err", "Couldn't punch", e.detail || "Try again."));
       }
     }
     resetTimer = setTimeout(idle, 5000);
