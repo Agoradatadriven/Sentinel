@@ -178,7 +178,7 @@
             <div><h1>${esc(title)}</h1><div class="sub" id="top-sub"></div></div>
           </div>
           <div class="top-right">
-            ${USER.role === "super_admin" ? '<span class="pill amber" title="You are viewing as Super Admin — full access to every module and record">Super Admin view</span>' : ""}
+            ${USER.role === "super_admin" ? '<span class="pill amber sa-badge" title="You are viewing as Super Admin — full access to every module and record">Super Admin view</span>' : ""}
             <div class="theme-toggle" id="theme-toggle">
               <button data-set-theme="light" title="Light mode">${ICON.sun}</button>
               <button data-set-theme="dark" title="Dark mode">${ICON.moon}</button>

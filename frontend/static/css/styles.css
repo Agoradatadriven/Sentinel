@@ -373,8 +373,21 @@ textarea { resize: vertical; min-height: 78px; }
   .scrim.open { display: block; }
   .content { padding: 16px 14px 60px; }
   .top { padding: 12px 14px; }
+  .top .row { min-width: 0; }            /* let the title shrink instead of pushing the right cluster off */
   .kpi .k-val { font-size: 26px; }
   .notif-panel { width: calc(100vw - 28px); right: -6px; }
+  /* Tabs scroll horizontally instead of forcing the page wider than the screen. */
+  .tabs { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs button { white-space: nowrap; flex: 0 0 auto; }
+}
+@media (max-width: 640px) {
+  /* Every two-column content grid (dashboard charts, settings fields, profile/task/leave forms,
+     late/handover) stacks to a single column on phones. !important beats the inline template. */
+  .grid { grid-template-columns: 1fr !important; }
+  .card-head { flex-wrap: wrap; }        /* title + action button wrap instead of clipping */
+  .sa-badge { display: none; }           /* "Super Admin view" pill — free up the tight topbar */
+  .filters select, .filters input { min-width: 0; flex: 1 1 140px; }
 }
 @media (max-width: 480px) {
   .kpis { grid-template-columns: 1fr 1fr; }
