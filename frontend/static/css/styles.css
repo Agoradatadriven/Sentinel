@@ -383,8 +383,11 @@ textarea { resize: vertical; min-height: 78px; }
 }
 @media (max-width: 640px) {
   /* Every two-column content grid (dashboard charts, settings fields, profile/task/leave forms,
-     late/handover) stacks to a single column on phones. !important beats the inline template. */
-  .grid { grid-template-columns: 1fr !important; }
+     late/handover) stacks to a single column on phones. minmax(0,1fr) — not plain 1fr — lets the
+     track shrink below its content's min-width so wide inputs/cards fit the screen instead of
+     forcing a horizontal scroll. !important beats the inline template. */
+  .grid { grid-template-columns: minmax(0, 1fr) !important; }
+  .card, .card-body, .field, #view { min-width: 0; }
   .card-head { flex-wrap: wrap; }        /* title + action button wrap instead of clipping */
   .sa-badge { display: none; }           /* "Super Admin view" pill — free up the tight topbar */
   .filters select, .filters input { min-width: 0; flex: 1 1 140px; }
