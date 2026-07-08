@@ -20,6 +20,14 @@ from .gym import ExerciseLibrary, GymExercise, GymLog
 from .leave import LeaveBalance, LeaveRequest, LeaveType
 from .notification import Notification
 from .payroll import PayrollEntry
+from .service import (
+    BoxRevision,
+    RecurringTemplate,
+    ReconciliationCase,
+    ServiceBox,
+    StageTransition,
+    TaskOccurrence,
+)
 from .system import AuditLog, SystemSetting
 from .task import AtriumApproval, Task, TaskComment, TaskHistory
 from .user import QRToken, Team, User
@@ -44,6 +52,12 @@ __all__ = [
     "ExerciseLibrary",
     "Notification",
     "PayrollEntry",
+    "ServiceBox",
+    "StageTransition",
+    "RecurringTemplate",
+    "TaskOccurrence",
+    "ReconciliationCase",
+    "BoxRevision",
     "AuditLog",
     "SystemSetting",
 ]

@@ -7,9 +7,16 @@ from sqlalchemy.orm import Session
 
 from ..constants import (
     ALL_ROLES,
+    APPROVAL_OUTCOMES,
+    BALL_WITH,
+    BOX_STAGES,
+    CADENCES,
     GYM_DAY_TYPES,
     PRIORITIES,
+    RECON_STATUSES,
+    RECON_TRIGGERS,
     ROLE_LABELS,
+    SERVICE_LINES,
     SET_TYPES,
     TASK_LABELS,
     TASK_STATUSES,
@@ -53,4 +60,12 @@ def vocab(user: User = Depends(get_current_user)):
         "task_labels": TASK_LABELS,
         "gym_day_types": GYM_DAY_TYPES,
         "set_types": SET_TYPES,
+        # Task Tracker v0.3
+        "service_lines": SERVICE_LINES,
+        "box_stages": BOX_STAGES,
+        "cadences": CADENCES,
+        "recon_triggers": RECON_TRIGGERS,
+        "recon_statuses": RECON_STATUSES,
+        "approval_outcomes": APPROVAL_OUTCOMES,
+        "ball_with": BALL_WITH,
     }

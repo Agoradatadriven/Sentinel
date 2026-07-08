@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from ..constants import PRIORITY_MEDIUM, TASK_TODO
@@ -18,8 +18,15 @@ class Task(Base):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     client_id: Mapped[int | None] = mapped_column(ForeignKey("clients.id"), nullable=True, index=True)
+    # Task Tracker v0.3: a single (one-off) task belongs to a service box. Null = legacy/loose task.
+    service_box_id: Mapped[int | None] = mapped_column(ForeignKey("service_boxes.id"), nullable=True, index=True)
     campaign: Mapped[str | None] = mapped_column(String(160), nullable=True)
     content_type: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    # Hours + progress for personnel performance (efficiency / on-time).
+    time_span_hours: Mapped[float | None] = mapped_column(Float, nullable=True)  # allotted hours
+    actual_hours: Mapped[float | None] = mapped_column(Float, nullable=True)
+    progress: Mapped[int] = mapped_column(Integer, default=0)  # 0–100 %
+    finished_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     # Internal-only ownership fields (NEVER exposed to clients / Atrium).
     account_manager_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)

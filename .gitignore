@@ -27,3 +27,6 @@ c_*.txt
 
 # Generated QR badge PNGs (encode employee tokens)
 badges/
+
+# local dev venv rebuilt on Python 3.14 (original .venv used 3.12 which was uninstalled)
+backend/.venv314/

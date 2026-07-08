@@ -396,3 +396,147 @@ textarea { resize: vertical; min-height: 78px; }
   .kpis { grid-template-columns: 1fr 1fr; }
   .clock { display: none; }
 }
+
+/* =====================================================================
+   Task Tracker v0.3 — service-box matrix, box detail, personnel
+   ===================================================================== */
+.tt-tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--line); }
+.tt-tab { border: none; background: none; padding: 8px 14px; font-size: 13.5px; font-weight: 600; color: var(--sub);
+  cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; border-radius: 6px 6px 0 0; }
+.tt-tab:hover { background: var(--row-alt); color: var(--text); }
+.tt-tab.active { color: var(--green-d); border-bottom-color: var(--green); }
+
+.tt-loading { padding: 40px; text-align: center; color: var(--muted); }
+
+/* --- Matrix --- */
+.tt-matrix { display: grid; grid-template-columns: 168px repeat(4, minmax(0, 1fr)); gap: 0;
+  border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--card); }
+.tt-colhead { padding: 12px 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); border-bottom: 1px solid var(--line); background: var(--row-alt); display: flex; align-items: center; gap: 6px; }
+.tt-clienthead { background: var(--input); }
+.tt-cdot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.tt-client { padding: 12px; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); background: var(--row-alt);
+  display: flex; flex-direction: column; gap: 4px; position: relative; }
+.tt-cname { font-weight: 700; font-size: 13.5px; color: var(--violet-d); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.tt-cname .svg-ic { width: 15px; height: 15px; }
+.tt-cname:hover { color: var(--violet); text-decoration: underline; }
+.tt-csub { font-size: 11px; color: var(--muted); }
+.tt-addsvc { position: absolute; top: 8px; right: 8px; border: 1px solid var(--line); background: var(--card); border-radius: 8px;
+  width: 24px; height: 24px; display: grid; place-items: center; cursor: pointer; color: var(--sub); padding: 0; }
+.tt-addsvc:hover { border-color: var(--green); color: var(--green-d); }
+.tt-addsvc .svg-ic { width: 14px; height: 14px; }
+.tt-cell { padding: 8px; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); min-height: 60px; }
+.tt-matrix > .tt-cell:nth-child(5n+1) { } /* client col handled by .tt-client */
+
+/* --- Service box --- */
+.tt-box { border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card); overflow: hidden;
+  margin-bottom: 8px; cursor: pointer; transition: border-color .12s, box-shadow .12s, transform .12s; }
+.tt-box:hover { border-color: var(--line-strong); box-shadow: var(--shadow); transform: translateY(-1px); }
+.tt-box.closed { opacity: .72; }
+.tt-box-top { padding: 10px 12px 9px; }
+.tt-box-title { font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 5px; }
+.tt-svc-meta { font-size: 11px; color: var(--sub); margin-bottom: 4px; }
+.tt-field { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 2px 0; }
+.tt-field .k { color: var(--muted); }
+.tt-field .v { font-weight: 600; text-align: right; }
+.tt-flags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.tt-flag { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: var(--pill); }
+.tt-flag.risk { background: #FEF3E6; color: var(--warn); }
+.tt-flag.overdue { background: #FEECEC; color: var(--danger); }
+.tt-flag.done { background: var(--green-bg); color: var(--green-d); }
+.tt-flag.missed { background: var(--input); color: var(--sub); }
+
+/* Stacked history tabs */
+.tt-stab { border-top: 1px solid var(--line); }
+.tt-stab-h { display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; font-size: 10.5px;
+  font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); cursor: pointer; }
+.tt-stab-h:hover { background: var(--row-alt); }
+.tt-stab-c { display: none; padding: 2px 12px 8px; }
+.tt-stab.open .tt-stab-c { display: block; }
+
+/* Board reconciliation mini-card */
+.tt-recon { display: flex; align-items: center; gap: 8px; border: 1px solid var(--danger); border-radius: var(--radius-sm);
+  background: #FEECEC; padding: 8px 10px; font-size: 11px; color: var(--danger); cursor: pointer; }
+.tt-recon .svg-ic { width: 16px; height: 16px; flex: none; }
+
+.tt-empty, .tt-placeholder { text-align: center; padding: 48px 20px; color: var(--muted); }
+.tt-empty .svg-ic, .tt-placeholder .svg-ic { width: 40px; height: 40px; margin-bottom: 10px; opacity: .6; }
+.tt-empty p, .tt-placeholder p { margin: 6px auto 12px; max-width: 440px; font-size: 13px; }
+.tt-placeholder h3 { color: var(--text); font-size: 16px; }
+
+/* Key/value rows used in the box detail + client panel */
+.panel-section { margin-bottom: 18px; }
+.panel-section > h3 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--sub); margin-bottom: 8px; }
+.panel-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.panel-row:last-child { border-bottom: none; }
+.panel-row .pk { color: var(--sub); flex: none; }
+.panel-row .pv { font-weight: 600; text-align: right; }
+
+/* --- Box detail --- */
+.tt-stagebar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+.tt-stagebar select { width: auto; }
+.tt-guards { margin-left: auto; display: flex; gap: 8px; font-size: 11px; }
+.tt-guard.ok { color: var(--green-d); }
+.tt-guard.no { color: var(--danger); }
+.tt-check { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: var(--sub); cursor: pointer; }
+.tt-check input { width: auto; }
+.tt-sec-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.tt-sec-head h3 { margin: 0; }
+
+.tt-tasktable { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.tt-tasktable th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
+  font-weight: 700; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.tt-tasktable td { padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.tt-prog { display: inline-block; width: 52px; height: 6px; background: var(--input); border-radius: 3px; overflow: hidden; vertical-align: middle; margin-right: 6px; }
+.tt-prog i { display: block; height: 100%; border-radius: 3px; }
+
+.tt-rec { background: var(--row-alt); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 8px; }
+.tt-rec-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.tt-rec-head strong { font-size: 13px; }
+.tt-rec-meta { font-size: 11px; color: var(--sub); margin: 4px 0; }
+.tt-adh-strip { display: flex; flex-wrap: wrap; gap: 3px; margin: 8px 0 6px; }
+.tt-adh-dot { width: 11px; height: 11px; border-radius: 50%; background: var(--input); display: inline-block; }
+.tt-adh-dot.done { background: var(--green); }
+.tt-adh-dot.missed { background: var(--danger); }
+.tt-adh-dot.today { background: transparent; border: 2px solid var(--info); }
+.tt-adh-dot.upcoming { background: var(--line-strong); opacity: .5; }
+.tt-adh-key { display: flex; flex-wrap: wrap; gap: 10px; font-size: 10px; color: var(--muted); margin-bottom: 6px; }
+.tt-adh-key span { display: inline-flex; align-items: center; gap: 4px; }
+.tt-adh-key .tt-adh-dot { width: 8px; height: 8px; }
+.tt-due { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 6px 0; border-top: 1px dashed var(--line); cursor: pointer; }
+.tt-due input { width: auto; }
+.tt-subset { background: var(--row-alt); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 8px 12px; }
+.tt-subset .panel-row em { font-style: normal; font-weight: 700; color: var(--violet-d); }
+
+.tt-recon-card { border: 1px solid var(--line); border-left: 3px solid var(--danger); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 8px; }
+.tt-recon-card.resolved { border-left-color: var(--green); opacity: .8; }
+.tt-recon-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.tt-recon-meta { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+.tt-hist { border-left: 2px solid var(--line); padding-left: 14px; margin-left: 4px; }
+.tt-hist-row { position: relative; padding: 5px 0; font-size: 12.5px; }
+.tt-hist-dot { position: absolute; left: -19px; top: 9px; width: 8px; height: 8px; border-radius: 50%; }
+
+/* --- Personnel --- */
+.tt-perf-card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; box-shadow: var(--shadow); }
+.tt-perf-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.tt-perf-head .avatar { flex: none; }
+.tt-rankno { width: 26px; height: 26px; border-radius: 50%; background: var(--grad-green); color: #fff; font-weight: 800; font-size: 13px; display: grid; place-items: center; flex: none; }
+.tt-perf-name { font-weight: 700; font-size: 14px; }
+.tt-perf-role { font-size: 11px; color: var(--sub); }
+.tt-score { margin-left: auto; font-size: 22px; font-weight: 800; color: var(--green-d); }
+.tt-metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.tt-metric { background: var(--row-alt); border-radius: var(--radius-sm); padding: 8px; text-align: center; }
+.tt-mv { font-size: 18px; font-weight: 800; }
+.tt-ml { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-top: 2px; }
+.tt-hours { font-size: 11.5px; color: var(--sub); margin-top: 10px; display: flex; align-items: center; gap: 6px; }
+.tt-hours .svg-ic { width: 14px; height: 14px; }
+.tt-rank-title { margin: 18px 0 10px; font-size: 14px; }
+.tt-note { font-size: 11.5px; color: var(--muted); margin-top: 8px; font-style: italic; }
+.tt-duelist { display: flex; flex-direction: column; }
+.tt-duelist .tt-due:first-child { border-top: none; }
+
+@media (max-width: 760px) {
+  .tt-matrix { grid-template-columns: 120px repeat(4, minmax(150px, 1fr)); overflow-x: auto; }
+  .tt-metrics { grid-template-columns: 1fr 1fr; }
+}

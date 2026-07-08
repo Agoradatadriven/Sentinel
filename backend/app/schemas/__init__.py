@@ -116,6 +116,7 @@ class TaskCreateIn(BaseModel):
     title: str
     description: str | None = None
     client_id: int | None = None
+    service_box_id: int | None = None
     campaign: str | None = None
     content_type: str | None = None
     assigned_team_id: int | None = None
@@ -123,6 +124,7 @@ class TaskCreateIn(BaseModel):
     priority: str = "Medium"
     status: str = "To Do"
     due_date: date | None = None
+    time_span_hours: float | None = None
     labels: list[str] = Field(default_factory=list)
     checklist: list[ChecklistItem] = Field(default_factory=list)
     deliverable_url: str | None = None
@@ -134,11 +136,16 @@ class TaskUpdateIn(BaseModel):
     title: str | None = None
     description: str | None = None
     client_id: int | None = None
+    service_box_id: int | None = None
     campaign: str | None = None
     content_type: str | None = None
     assigned_team_id: int | None = None
     assigned_to_id: int | None = None
     due_date: date | None = None
+    time_span_hours: float | None = None
+    actual_hours: float | None = None
+    progress: int | None = None
+    finished_date: date | None = None
     labels: list[str] | None = None
     checklist: list[ChecklistItem] | None = None
     deliverable_url: str | None = None
@@ -158,6 +165,87 @@ class TaskPriorityIn(BaseModel):
 class CommentIn(BaseModel):
     body: str
     attachments: list[dict[str, Any]] = Field(default_factory=list)
+
+
+# --- Task Tracker v0.3: service boxes & sub-objects ------------------------
+class BoxCreateIn(BaseModel):
+    client_id: int
+    service_line: str
+    team_leader_id: int | None = None
+    run_length_days: int | None = None
+    notes: str | None = None
+
+
+class BoxUpdateIn(BaseModel):
+    team_leader_id: int | None = None
+    is_paid: bool | None = None
+    ads_running: bool | None = None
+    started_date: date | None = None
+    approved_date: date | None = None
+    client_confirmed_date: date | None = None
+    launch_date: date | None = None
+    run_length_days: int | None = None
+    notes: str | None = None
+
+
+class StageMoveIn(BaseModel):
+    stage: str
+    reason: str | None = None  # required when moving backward
+
+
+class RecurringCreateIn(BaseModel):
+    title: str
+    cadence: str  # Daily | Weekly | Monthly
+    assignee_id: int | None = None
+    time_span_hours: float = 1.0
+    start_date: date
+    end_date: date | None = None
+
+
+class RecurringUpdateIn(BaseModel):
+    title: str | None = None
+    cadence: str | None = None
+    assignee_id: int | None = None
+    time_span_hours: float | None = None
+    end_date: date | None = None
+    active: bool | None = None
+
+
+class OccurrenceCheckIn(BaseModel):
+    occurrence_date: date
+    done: bool = True
+    actual_hours: float | None = None
+
+
+class ReconCreateIn(BaseModel):
+    trigger_type: str
+    description: str | None = None
+    owner_id: int | None = None
+
+
+class ReconUpdateIn(BaseModel):
+    trigger_type: str | None = None
+    description: str | None = None
+    owner_id: int | None = None
+    status: str | None = None
+    resolution: str | None = None
+
+
+class RevisionCreateIn(BaseModel):
+    what_changed: str | None = None
+    ball_with: str = "us"
+
+
+class RevisionUpdateIn(BaseModel):
+    what_changed: str | None = None
+    ball_with: str | None = None
+    approval_outcome: str | None = None
+
+
+class ClientCreateIn(BaseModel):
+    name: str
+    contact_email: str | None = None
+    atrium_client_id: str | None = None
 
 
 # --- People ----------------------------------------------------------------

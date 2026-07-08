@@ -24,6 +24,7 @@ from app.constants import (  # noqa: E402
     ACTION_BREAK_START,
     ACTION_CLOCK_IN,
     ACTION_CLOCK_OUT,
+    BOX_STAGES,
     DAY_LEGS,
     DAY_PULL,
     DAY_PUSH,
@@ -46,6 +47,10 @@ from app.constants import (  # noqa: E402
     ROLE_INTERN,
     ROLE_SUPER_ADMIN,
     ROLE_TEAM_LEAD,
+    STAGE_CLOSED,
+    STAGE_FOR_LAUNCH,
+    STAGE_IN_PROCESS,
+    STAGE_LAUNCHED,
     TASK_BLOCKED,
     TASK_COMPLETED,
     TASK_FOR_REVIEW,
@@ -58,6 +63,7 @@ from app.database import Base, SessionLocal, engine  # noqa: E402
 from app import models  # noqa: E402  (registers mappers)
 from app.models import (  # noqa: E402
     AttendanceEvent,
+    BoxRevision,
     Client,
     ExerciseLibrary,
     GymExercise,
@@ -66,9 +72,14 @@ from app.models import (  # noqa: E402
     LeaveRequest,
     LeaveType,
     Notification,
+    RecurringTemplate,
+    ReconciliationCase,
+    ServiceBox,
+    StageTransition,
     Task,
     TaskComment,
     TaskHistory,
+    TaskOccurrence,
     Team,
     User,
 )
@@ -280,6 +291,7 @@ def run(minimal: bool = False) -> None:
         _seed_attendance(db, users)
         _seed_gym(db, users)
         _seed_tasks(db, users, teams, clients)
+        _seed_service_boxes(db, users, clients)
         _seed_leave(db, users)
         _seed_notifications(db, users)
 
@@ -506,6 +518,100 @@ def _seed_tasks(db, users, teams, clients) -> None:
         db.add(TaskComment(task_id=task_id, author_id=users[author].id, body=body))
     db.commit()
     print(f"  seeded {len(specs)} tasks across all columns + comments + history")
+
+
+def _seed_service_boxes(db, users, clients) -> None:
+    """Populate the matrix board: one client's four services spread across the four stages,
+    plus a couple more so every column has content. Links some demo tasks into their boxes and
+    seeds recurring tasks (with a realistic done/missed history), a reconciliation, and revisions.
+    """
+    T = today_ph()
+    leaders = {  # service line -> its Team Leader (box owner / auto-receiver)
+        "Acquisition": users["Bong Cruz"],
+        "Development": users["Carlo Dizon"],
+        "Lifecycle": users["Dana Lim"],
+        "Data Analyst": users["Ana Reyes"],
+    }
+    # (client, service_line, stage, paid, ads_running, started_off, approved_off, launch_off, run_len)
+    box_specs = [
+        ("Acme Corp", "Acquisition", STAGE_LAUNCHED, True, True, -41, -12, -35, 180),
+        ("Acme Corp", "Development", STAGE_IN_PROCESS, False, False, -9, None, None, 120),
+        ("Acme Corp", "Lifecycle", STAGE_FOR_LAUNCH, False, False, -20, -3, None, 90),
+        ("Acme Corp", "Data Analyst", STAGE_CLOSED, True, False, -120, -110, -100, 60),
+        ("BrandCo", "Development", STAGE_LAUNCHED, True, True, -60, -30, -25, 120),
+        ("BrandCo", "Acquisition", STAGE_IN_PROCESS, False, False, -6, None, None, 90),
+        ("NovaCorp", "Data Analyst", STAGE_FOR_LAUNCH, False, False, -14, -2, None, 90),
+        ("Riverdance RV", "Lifecycle", STAGE_IN_PROCESS, False, False, -3, None, None, 60),
+    ]
+    boxes: dict[tuple[str, str], ServiceBox] = {}
+    for client, line, stage, paid, ads, s_off, a_off, l_off, run in box_specs:
+        box = ServiceBox(
+            client_id=clients[client].id, service_line=line, team_leader_id=leaders[line].id,
+            stage=stage, is_paid=paid, ads_running=ads, run_length_days=run,
+            started_date=T + timedelta(days=s_off),
+            approved_date=(T + timedelta(days=a_off)) if a_off is not None else None,
+            client_confirmed_date=(T + timedelta(days=l_off + 2)) if l_off is not None else None,
+            launch_date=(T + timedelta(days=l_off)) if l_off is not None else None,
+            closed_date=(T + timedelta(days=-95)) if stage == STAGE_CLOSED else None,
+        )
+        db.add(box)
+        db.flush()
+        boxes[(client, line)] = box
+        # Stage history up to the current stage.
+        prev = None
+        for st in BOX_STAGES[: BOX_STAGES.index(stage) + 1]:
+            db.add(StageTransition(box_id=box.id, from_stage=prev, to_stage=st, moved_by_id=users["Leo Vasquez"].id))
+            prev = st
+
+    # Attach existing single tasks to the matching box (by client + service line/team).
+    for t in db.query(Task).filter(Task.client_id.is_not(None)).all():
+        team = db.get(Team, t.assigned_team_id) if t.assigned_team_id else None
+        if not team:
+            continue
+        key = next((k for k in boxes if clients[k[0]].id == t.client_id and k[1] == team.name), None)
+        if key:
+            t.service_box_id = boxes[key].id
+            t.time_span_hours = t.time_span_hours or 4
+            if t.status != TASK_COMPLETED:
+                t.progress = t.progress or 40
+
+    # Recurring tasks on the two Launched boxes (monitoring), with a done/missed history.
+    def add_recurring(box, title, cadence, assignee, span, start_off, done_pattern):
+        tpl = RecurringTemplate(
+            box_id=box.id, title=title, cadence=cadence, assignee_id=assignee.id,
+            time_span_hours=span, start_date=T + timedelta(days=start_off),
+        )
+        db.add(tpl)
+        db.flush()
+        # done_pattern: list of day offsets (relative to today) that were completed.
+        for off in done_pattern:
+            db.add(TaskOccurrence(template_id=tpl.id, occurrence_date=T + timedelta(days=off),
+                                  done_by_id=assignee.id, actual_hours=span * 0.9))
+        return tpl
+
+    acme_acq = boxes[("Acme Corp", "Acquisition")]
+    add_recurring(acme_acq, "Daily ad monitoring", "Daily", users["Earl Santos"], 1,
+                  -13, [o for o in range(-13, 1) if o != -8])  # one miss 8 days ago
+    add_recurring(acme_acq, "Weekly performance report", "Weekly", users["Bong Cruz"], 4,
+                  -35, list(range(-35, 1, 7)))
+    brand_dev = boxes[("BrandCo", "Development")]
+    add_recurring(brand_dev, "Weekly QA sweep", "Weekly", users["Carlo Dizon"], 3,
+                  -21, [-21, -14])  # missed the most recent
+
+    # An open reconciliation on the launched Acme box (blocks Closing).
+    db.add(ReconciliationCase(
+        box_id=acme_acq.id, trigger_type="Billing not in line",
+        description="Ad-spend on Meta doesn't match the invoice — investigating.",
+        owner_id=users["Bong Cruz"].id, status="Investigating",
+    ))
+    # Approval-track history on an In Process box.
+    acme_dev = boxes[("Acme Corp", "Development")]
+    db.add(BoxRevision(box_id=acme_dev.id, round_no=1, what_changed="Initial proposal sent", ball_with="client",
+                       approval_outcome="Changes requested"))
+    db.add(BoxRevision(box_id=acme_dev.id, round_no=2, what_changed="Reworked scope + timeline", ball_with="us",
+                       approval_outcome="Pending"))
+    db.commit()
+    print(f"  seeded {len(box_specs)} service boxes across all stages + recurring tasks, a reconciliation, revisions")
 
 
 def _seed_leave(db, users) -> None:

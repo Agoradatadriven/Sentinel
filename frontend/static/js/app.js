@@ -61,7 +61,7 @@
     { href: "/dashboard", label: "Dashboard", icon: "grid" },
     { href: "/attendance", label: "Attendance", icon: "clock" },
     { href: "/gym", label: "Gym Tracker", icon: "dumbbell" },
-    { href: "/tasks", label: "Task Board", icon: "board" },
+    { href: "/tasks", label: "Task Tracker", icon: "board" },
     { href: "/people", label: "People", icon: "users" },
     { href: "/leave", label: "Leave", icon: "calendar" },
     { href: "/north-star", label: "Our North Star", icon: "compass" },

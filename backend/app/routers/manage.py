@@ -20,6 +20,7 @@ from ..models import (
     LeaveBalance,
     LeaveRequest,
     LeaveType,
+    ServiceBox,
     Task,
     Team,
     User,
@@ -144,7 +145,12 @@ def delete_client(item_id: int, actor: User = Depends(get_current_user), db: Ses
     if not c:
         raise HTTPException(404, "Client not found")
     name = c.name
-    db.query(Task).filter(Task.client_id == item_id).update({Task.client_id: None}, synchronize_session=False)
+    # Detach single tasks, then remove the client's service boxes (cascades to their sub-objects).
+    db.query(Task).filter(Task.client_id == item_id).update(
+        {Task.client_id: None, Task.service_box_id: None}, synchronize_session=False
+    )
+    for box in db.execute(select(ServiceBox).where(ServiceBox.client_id == item_id)).scalars().all():
+        db.delete(box)
     db.delete(c)
     db.commit()
     audit.record(db, actor_id=actor.id, table_name="clients", record_id=item_id, action="delete", old={"name": name})

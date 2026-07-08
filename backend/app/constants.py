@@ -102,6 +102,48 @@ PRIORITIES = [PRIORITY_URGENT, PRIORITY_MEDIUM, PRIORITY_LOW]
 
 TASK_LABELS = ["Design", "Copy", "Ads", "SEO", "Dev"]
 
+# --- Task Tracker v0.3: Service boxes & stages -----------------------------
+# Client-facing service lines. Bidbrain is deliberately NOT here (separate monitoring module).
+SERVICE_ACQUISITION = "Acquisition"
+SERVICE_DEVELOPMENT = "Development"
+SERVICE_LIFECYCLE = "Lifecycle"
+SERVICE_DATA_ANALYST = "Data Analyst"
+SERVICE_LINES = [SERVICE_ACQUISITION, SERVICE_DEVELOPMENT, SERVICE_LIFECYCLE, SERVICE_DATA_ANALYST]
+
+# Pipeline stages a service box moves through (ordered — index gives forward/backward direction).
+STAGE_IN_PROCESS = "In Process"
+STAGE_FOR_LAUNCH = "For Launch"
+STAGE_LAUNCHED = "Launched"
+STAGE_CLOSED = "Closed"
+BOX_STAGES = [STAGE_IN_PROCESS, STAGE_FOR_LAUNCH, STAGE_LAUNCHED, STAGE_CLOSED]
+
+# Recurring-task cadences.
+CADENCE_DAILY = "Daily"
+CADENCE_WEEKLY = "Weekly"
+CADENCE_MONTHLY = "Monthly"
+CADENCES = [CADENCE_DAILY, CADENCE_WEEKLY, CADENCE_MONTHLY]
+
+# Reconciliation trigger taxonomy (starting set — extend in Manage later).
+RECON_TRIGGERS = [
+    "Billing not in line",
+    "Errors on the client end of the ads",
+    "Inaccurate / anomalous data",
+    "Other",
+]
+RECON_OPEN = "Open"
+RECON_INVESTIGATING = "Investigating"
+RECON_RESOLVED = "Resolved"
+RECON_STATUSES = [RECON_OPEN, RECON_INVESTIGATING, RECON_RESOLVED]
+
+# Approval-track (revision rounds inside In Process): who currently holds the ball + outcome.
+BALL_US = "us"
+BALL_CLIENT = "client"
+BALL_WITH = [BALL_US, BALL_CLIENT]
+APPROVAL_PENDING = "Pending"
+APPROVAL_APPROVED = "Approved"
+APPROVAL_CHANGES = "Changes requested"
+APPROVAL_OUTCOMES = [APPROVAL_PENDING, APPROVAL_APPROVED, APPROVAL_CHANGES]
+
 # --- Leave -----------------------------------------------------------------
 LEAVE_PENDING = "Pending"
 LEAVE_APPROVED = "Approved"
@@ -121,3 +163,5 @@ NOTIF_TASK_REVIEW = "task_review"
 NOTIF_TASK_OVERDUE = "task_overdue"
 NOTIF_GYM_MISSING = "gym_missing"
 NOTIF_ANNOUNCEMENT = "announcement"
+NOTIF_STAGE_MOVED = "stage_moved"
+NOTIF_RECON_OPENED = "recon_opened"

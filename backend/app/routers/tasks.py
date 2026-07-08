@@ -20,6 +20,7 @@ from ..constants import (
     ROLE_EMPLOYEE,
     ROLE_INTERN,
     ROLE_TEAM_LEAD,
+    TASK_COMPLETED,
     TASK_FOR_REVIEW,
     TASK_STATUSES,
 )
@@ -106,8 +107,10 @@ def create_task(payload: TaskCreateIn, user: User = Depends(get_current_user), d
         title=payload.title,
         description=payload.description,
         client_id=payload.client_id,
+        service_box_id=payload.service_box_id,
         campaign=payload.campaign,
         content_type=payload.content_type,
+        time_span_hours=payload.time_span_hours,
         account_manager_id=user.id if is_account_manager(user) else None,
         assigned_team_id=payload.assigned_team_id,
         assigned_to_id=payload.assigned_to_id,
@@ -174,6 +177,12 @@ def move_status(task_id: int, payload: TaskStatusIn, user: User = Depends(get_cu
     if old == payload.status:
         return task_detail(task, db)
     task.status = payload.status
+    # Stamp completion so on-time/adherence can be computed; clear it if reopened.
+    if payload.status == TASK_COMPLETED:
+        task.finished_date = task.finished_date or utcnow().date()
+        task.progress = 100
+    elif old == TASK_COMPLETED:
+        task.finished_date = None
     _log(db, task.id, user.id, "status", old, payload.status)
     db.commit()
     audit.record(db, actor_id=user.id, table_name="tasks", record_id=task.id, action="move",
