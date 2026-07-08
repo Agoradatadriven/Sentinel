@@ -508,6 +508,18 @@ textarea { resize: vertical; min-height: 78px; }
 .tt-prog { display: inline-block; width: 52px; height: 6px; background: var(--input); border-radius: 3px; overflow: hidden; vertical-align: middle; margin-right: 6px; }
 .tt-prog i { display: block; height: 100%; border-radius: 3px; }
 
+/* Inline row actions (edit/delete icon buttons on tasks, recurring, revisions) */
+.tt-rowact { white-space: nowrap; text-align: right; }
+.tt-rowact button, .tt-x { border: none; background: none; cursor: pointer; color: var(--muted); padding: 3px; border-radius: 6px; display: inline-grid; place-items: center; vertical-align: middle; }
+.tt-rowact button .svg-ic, .tt-x .svg-ic { width: 15px; height: 15px; }
+.tt-rowact button:hover, .tt-x:hover { background: var(--input); color: var(--text); }
+.tt-rowact button.del:hover, .tt-x.del:hover { color: var(--danger); background: #FEECEC; }
+
+.tt-rev-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.tt-rev-row:last-child { border-bottom: none; }
+.tt-rev-act { display: flex; align-items: center; gap: 6px; flex: none; }
+.tt-rev-act select { width: auto; font-size: 12px; padding: 3px 6px; }
+
 .tt-rec { background: var(--row-alt); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 8px; }
 .tt-rec-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
 .tt-rec-head strong { font-size: 13px; }

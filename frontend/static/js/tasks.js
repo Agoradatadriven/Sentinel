@@ -207,23 +207,29 @@ window.pageInit = async (S) => {
     ].join(" ");
 
     // Tasks table.
+    const tcols = canManage ? 6 : 5;
     const taskRows = b.tasks.length ? b.tasks.map((t) => `
       <tr>
-        <td>${S.esc(t.title)}${t.status === "Completed" ? "" : ""}</td>
+        <td>${S.esc(t.title)}</td>
         <td>${t.assignee ? S.esc(t.assignee.name.split(" ")[0]) : "—"}</td>
         <td>${progBar(t.progress, t.status)}</td>
         <td>${t.due_date ? S.fmtDate(t.due_date + "T00:00:00+08:00") : "—"}</td>
         <td>${taskStatusPill(t)}</td>
-      </tr>`).join("") : `<tr><td colspan="5" class="muted">No single tasks yet.</td></tr>`;
+        ${canManage ? `<td class="tt-rowact"><button data-task-edit="${t.id}" title="Edit">${S.ICON.gear}</button><button data-task-del="${t.id}" class="del" title="Delete">${S.ICON.x}</button></td>` : ""}
+      </tr>`).join("") : `<tr><td colspan="${tcols}" class="muted">No single tasks yet.</td></tr>`;
 
     // Recurring blocks.
     const recurring = b.recurring.map(recurringBlock).join("") ||
       `<div class="muted" style="font-size:13px">No recurring tasks.</div>`;
 
     // Approval track (In Process subset).
+    const outcomeSel = (r) => `<select data-rev-outcome="${r.id}">${vocab.approval_outcomes.map((o) => `<option ${o === r.approval_outcome ? "selected" : ""}>${o}</option>`).join("")}</select>`;
     const revs = b.revisions.length ? b.revisions.map((r) => `
-      <div class="panel-row"><span class="pk">Revision ${r.round_no}</span>
-        <span class="pv">${S.esc(r.what_changed || "—")} · ball: ${S.esc(r.ball_with)} · <em>${S.esc(r.approval_outcome)}</em></span></div>`).join("")
+      <div class="tt-rev-row">
+        <div><span class="pk">Revision ${r.round_no}</span> <span class="pv">${S.esc(r.what_changed || "—")}</span>
+          <div class="tt-recon-meta">ball: ${S.esc(r.ball_with)}</div></div>
+        <div class="tt-rev-act">${canManage ? outcomeSel(r) + `<button data-rev-del="${r.id}" class="tt-x del" title="Delete">${S.ICON.x}</button>` : `<em>${S.esc(r.approval_outcome)}</em>`}</div>
+      </div>`).join("")
       : `<div class="muted" style="font-size:13px">No revision rounds logged.</div>`;
 
     // Reconciliation.
@@ -231,9 +237,11 @@ window.pageInit = async (S) => {
       <div class="tt-recon-card ${r.is_open ? "open" : "resolved"}">
         <div class="tt-recon-head"><strong>${S.esc(r.trigger_type)}</strong><span class="pill ${r.is_open ? "red" : "green"}">${S.esc(r.status)}</span></div>
         ${r.description ? `<div class="sub">${S.esc(r.description)}</div>` : ""}
-        <div class="tt-recon-meta">Owner: ${r.owner ? S.esc(r.owner.name) : "—"} · Opened ${S.fmtDate(r.opened_at)}</div>
+        <div class="tt-recon-meta">Owner: ${r.owner ? S.esc(r.owner.name) : "—"} · Opened ${S.fmtDate(r.opened_at)}${r.resolution ? " · " + S.esc(r.resolution) : ""}</div>
         ${canManage ? `<div class="row" style="gap:6px;margin-top:6px">
           ${r.is_open ? `<button class="btn sm ghost" data-recon-resolve="${r.id}">Mark resolved</button>` : ""}
+          <button class="btn sm ghost" data-recon-edit="${r.id}">Edit</button>
+          <button class="btn sm ghost danger-text" data-recon-del="${r.id}">Delete</button>
         </div>` : ""}
       </div>`).join("") : `<div class="muted" style="font-size:13px">No reconciliation cases.</div>`;
 
@@ -250,9 +258,12 @@ window.pageInit = async (S) => {
         ${canManage ? `<select id="d-stage">${stageOpts}</select>` : ""}
         <span class="tt-guards">${guardLine}</span>
       </div>
-      ${canManage ? `<div class="row" style="gap:14px;margin:-4px 0 14px">
+      ${canManage ? `<div class="row" style="gap:14px;margin:-4px 0 14px;align-items:center;flex-wrap:wrap">
         <label class="tt-check"><input type="checkbox" id="d-paid" ${b.is_paid ? "checked" : ""}> Paid</label>
         <label class="tt-check"><input type="checkbox" id="d-ads" ${b.ads_running ? "checked" : ""}> Ads running</label>
+        <span style="margin-left:auto"></span>
+        <button class="btn sm ghost" id="d-edit-box">${S.ICON.gear}Edit box</button>
+        <button class="btn sm ghost danger-text" id="d-del-box">Delete box</button>
       </div>` : ""}
 
       <div class="panel-section">
@@ -264,7 +275,7 @@ window.pageInit = async (S) => {
 
       <div class="panel-section">
         <div class="tt-sec-head"><h3>Tasks</h3>${canManage ? `<button class="btn sm ghost" id="d-add-task">${S.ICON.plus}Add task</button>` : ""}</div>
-        <table class="tt-tasktable"><thead><tr><th>Task</th><th>Who</th><th>Progress</th><th>Target</th><th>Status</th></tr></thead>
+        <table class="tt-tasktable"><thead><tr><th>Task</th><th>Who</th><th>Progress</th><th>Target</th><th>Status</th>${canManage ? "<th></th>" : ""}</tr></thead>
           <tbody>${taskRows}</tbody></table>
       </div>
 
@@ -313,6 +324,52 @@ window.pageInit = async (S) => {
     if (S.qs("#d-add-rev")) S.qs("#d-add-rev").onclick = () => addRevisionForm(b, m);
     if (S.qs("#d-add-recon")) S.qs("#d-add-recon").onclick = () => addReconForm(b, m);
 
+    // Box edit / delete.
+    if (S.qs("#d-edit-box")) S.qs("#d-edit-box").onclick = () => editBoxForm(b, m);
+    if (S.qs("#d-del-box")) S.qs("#d-del-box").onclick = async () => {
+      if (!confirm(`Delete the ${b.service_line} box for ${b.client_name}? Its recurring tasks, reconciliation and revision history are removed; single tasks are detached (kept). This can't be undone.`)) return;
+      try { await S.api(`/api/boards/${b.id}`, { method: "DELETE" }); S.toast("Service box deleted", "ok"); m.close(); loadBoard(); }
+      catch (e) { S.toast(e.detail, "err"); }
+    };
+    // Task edit / delete.
+    S.qsa("[data-task-edit]").forEach((btn) => (btn.onclick = () => {
+      const t = b.tasks.find((x) => x.id === +btn.dataset.taskEdit); if (t) editTaskForm(t, b, m);
+    }));
+    S.qsa("[data-task-del]").forEach((btn) => (btn.onclick = async () => {
+      const t = b.tasks.find((x) => x.id === +btn.dataset.taskDel);
+      if (!confirm(`Delete task "${t ? t.title : ""}"? This can't be undone.`)) return;
+      try { await S.api(`/api/tasks/${btn.dataset.taskDel}`, { method: "DELETE" }); S.toast("Task deleted", "ok"); m.close(); openBox(id); }
+      catch (e) { S.toast(e.detail, "err"); }
+    }));
+    // Recurring edit / delete.
+    S.qsa("[data-rec-edit]").forEach((btn) => (btn.onclick = () => {
+      const r = b.recurring.find((x) => x.id === +btn.dataset.recEdit); if (r) editRecurringForm(r, b, m);
+    }));
+    S.qsa("[data-rec-del]").forEach((btn) => (btn.onclick = async () => {
+      if (!confirm("Delete this recurring task and its history? This can't be undone.")) return;
+      try { await S.api(`/api/boards/recurring/${btn.dataset.recDel}`, { method: "DELETE" }); S.toast("Recurring task deleted", "ok"); m.close(); openBox(id); }
+      catch (e) { S.toast(e.detail, "err"); }
+    }));
+    // Revision outcome / delete.
+    S.qsa("[data-rev-outcome]").forEach((sel2) => (sel2.onchange = async () => {
+      try { await S.api(`/api/boards/revision/${sel2.dataset.revOutcome}`, { method: "PATCH", body: { approval_outcome: sel2.value } }); S.toast("Outcome updated", "ok"); }
+      catch (e) { S.toast(e.detail, "err"); }
+    }));
+    S.qsa("[data-rev-del]").forEach((btn) => (btn.onclick = async () => {
+      if (!confirm("Delete this revision round?")) return;
+      try { await S.api(`/api/boards/revision/${btn.dataset.revDel}`, { method: "DELETE" }); S.toast("Revision deleted", "ok"); m.close(); openBox(id); }
+      catch (e) { S.toast(e.detail, "err"); }
+    }));
+    // Reconciliation edit / delete.
+    S.qsa("[data-recon-edit]").forEach((btn) => (btn.onclick = () => {
+      const r = b.reconciliations.find((x) => x.id === +btn.dataset.reconEdit); if (r) editReconForm(r, b, m);
+    }));
+    S.qsa("[data-recon-del]").forEach((btn) => (btn.onclick = async () => {
+      if (!confirm("Delete this reconciliation case?")) return;
+      try { await S.api(`/api/boards/reconciliation/${btn.dataset.reconDel}`, { method: "DELETE" }); S.toast("Reconciliation deleted", "ok"); m.close(); openBox(id); }
+      catch (e) { S.toast(e.detail, "err"); }
+    }));
+
     // Due-now check-offs.
     S.qsa("[data-occ]").forEach((cb) => (cb.onchange = async () => {
       const tid = cb.dataset.occ, d = cb.dataset.date;
@@ -348,7 +405,9 @@ window.pageInit = async (S) => {
       <label class="tt-due"><input type="checkbox" data-occ="${r.id}" data-date="${r.due.occurrence_date}" ${r.due.done ? "checked" : ""}>
         ${S.esc(r.title)} — ${S.fmtDate(r.due.occurrence_date + "T00:00:00+08:00")}${r.due.done ? " ✓" : ""}</label>` : "";
     return `<div class="tt-rec">
-      <div class="tt-rec-head"><strong>${S.esc(r.title)}</strong><span class="pill ${cad}">${r.cadence}</span></div>
+      <div class="tt-rec-head"><strong>${S.esc(r.title)}${r.active ? "" : ' <span class="tt-flag missed">paused</span>'}</strong>
+        <span class="row" style="gap:6px;align-items:center"><span class="pill ${cad}">${r.cadence}</span>
+        ${canManage ? `<button data-rec-edit="${r.id}" class="tt-x" title="Edit">${S.ICON.gear}</button><button data-rec-del="${r.id}" class="tt-x del" title="Delete">${S.ICON.x}</button>` : ""}</span></div>
       <div class="tt-rec-meta">${r.assignee ? S.esc(r.assignee.name) : "Unassigned"} · ${r.time_span_hours}h/occ</div>
       <div class="tt-adh-strip">${strip}</div>
       <div class="tt-adh-key"><span><span class="tt-adh-dot done"></span>done</span><span><span class="tt-adh-dot missed"></span>missed</span><span><span class="tt-adh-dot today"></span>today</span><span><span class="tt-adh-dot upcoming"></span>upcoming</span></div>
@@ -604,6 +663,92 @@ window.pageInit = async (S) => {
     S.qs("#rc-save").onclick = async () => {
       const body = { trigger_type: S.qs("#rc-trigger").value, description: S.qs("#rc-desc").value || null, owner_id: S.qs("#rc-owner").value ? +S.qs("#rc-owner").value : null };
       try { await S.api(`/api/boards/${box.id}/reconciliation`, { method: "POST", body }); S.toast("Reconciliation opened", "ok"); m.close(); parent.close(); openBox(box.id); loadBoard(); }
+      catch (e) { S.toast(e.detail, "err"); }
+    };
+  }
+
+  function editBoxForm(box, parent) {
+    const m = S.modal({
+      title: `Edit ${box.service_line} — ${box.client_name}`,
+      body: `<label class="field"><span>Team leader (receiver)</span><select id="eb-leader"><option value="">—</option>${people.map((p) => `<option value="${p.id}" ${box.team_leader_id === p.id ? "selected" : ""}>${S.esc(p.name)}</option>`).join("")}</select></label>
+        <label class="field"><span>Length of run (days)</span><input type="number" id="eb-run" value="${box.run_length_days || ""}"></label>
+        <label class="field"><span>Notes</span><textarea id="eb-notes">${S.esc(box.notes || "")}</textarea></label>`,
+      footer: `<button class="btn ghost" id="eb-cancel">Cancel</button><button class="btn primary" id="eb-save">Save</button>`,
+    });
+    S.qs("#eb-cancel").onclick = m.close;
+    S.qs("#eb-save").onclick = async () => {
+      const body = { team_leader_id: S.qs("#eb-leader").value ? +S.qs("#eb-leader").value : null, run_length_days: S.qs("#eb-run").value ? +S.qs("#eb-run").value : null, notes: S.qs("#eb-notes").value || null };
+      try { await S.api(`/api/boards/${box.id}`, { method: "PATCH", body }); S.toast("Box updated", "ok"); m.close(); parent.close(); openBox(box.id); loadBoard(); }
+      catch (e) { S.toast(e.detail, "err"); }
+    };
+  }
+
+  function editTaskForm(t, box, parent) {
+    const m = S.modal({
+      title: "Edit task",
+      body: `<label class="field"><span>Task</span><input id="et-title" value="${S.esc(t.title)}"></label>
+        <label class="field"><span>Assignee</span><select id="et-assignee"><option value="">Unassigned</option>${people.map((p) => `<option value="${p.id}" ${t.assigned_to_id === p.id ? "selected" : ""}>${S.esc(p.name)}</option>`).join("")}</select></label>
+        <div class="row" style="gap:10px">
+          <label class="field" style="flex:1"><span>Target date</span><input type="date" id="et-due" value="${t.due_date || ""}"></label>
+          <label class="field" style="flex:1"><span>Time span (h)</span><input type="number" step="0.5" id="et-span" value="${t.time_span_hours || ""}"></label>
+        </div>
+        <div class="row" style="gap:10px">
+          <label class="field" style="flex:1"><span>Progress %</span><input type="number" min="0" max="100" id="et-prog" value="${t.progress || 0}"></label>
+          <label class="field" style="flex:1"><span>Status</span><select id="et-status">${vocab.task_statuses.map((s) => `<option ${s === t.status ? "selected" : ""}>${s}</option>`).join("")}</select></label>
+        </div>`,
+      footer: `<button class="btn ghost" id="et-cancel">Cancel</button><button class="btn primary" id="et-save">Save</button>`,
+    });
+    S.qs("#et-cancel").onclick = m.close;
+    S.qs("#et-save").onclick = async () => {
+      const title = S.qs("#et-title").value.trim();
+      if (!title) return S.toast("Task name required", "err");
+      const newStatus = S.qs("#et-status").value;
+      const body = { title, assigned_to_id: S.qs("#et-assignee").value ? +S.qs("#et-assignee").value : null, due_date: S.qs("#et-due").value || null, time_span_hours: S.qs("#et-span").value ? +S.qs("#et-span").value : null, progress: +S.qs("#et-prog").value || 0 };
+      try {
+        await S.api(`/api/tasks/${t.id}`, { method: "PATCH", body });
+        if (newStatus !== t.status) await S.api(`/api/tasks/${t.id}/status`, { method: "PATCH", body: { status: newStatus } });
+        S.toast("Task updated", "ok"); m.close(); parent.close(); openBox(box.id);
+      } catch (e) { S.toast(e.detail, "err"); }
+    };
+  }
+
+  function editRecurringForm(r, box, parent) {
+    const m = S.modal({
+      title: "Edit recurring task",
+      body: `<label class="field"><span>Task</span><input id="er-title" value="${S.esc(r.title)}"></label>
+        <div class="row" style="gap:10px">
+          <label class="field" style="flex:1"><span>Cadence</span><select id="er-cad">${vocab.cadences.map((c) => `<option ${c === r.cadence ? "selected" : ""}>${c}</option>`).join("")}</select></label>
+          <label class="field" style="flex:1"><span>Time span (h/occ)</span><input type="number" step="0.5" id="er-span" value="${r.time_span_hours}"></label>
+        </div>
+        <label class="field"><span>Assignee</span><select id="er-assignee"><option value="">Unassigned</option>${people.map((p) => `<option value="${p.id}" ${r.assignee_id === p.id ? "selected" : ""}>${S.esc(p.name)}</option>`).join("")}</select></label>
+        <label class="field"><span>End date (optional)</span><input type="date" id="er-end" value="${r.end_date || ""}"></label>
+        <label class="tt-check"><input type="checkbox" id="er-active" ${r.active ? "checked" : ""}> Active (uncheck to pause)</label>`,
+      footer: `<button class="btn ghost" id="er-cancel">Cancel</button><button class="btn primary" id="er-save">Save</button>`,
+    });
+    S.qs("#er-cancel").onclick = m.close;
+    S.qs("#er-save").onclick = async () => {
+      const body = { title: S.qs("#er-title").value.trim(), cadence: S.qs("#er-cad").value, time_span_hours: +S.qs("#er-span").value || 1, assignee_id: S.qs("#er-assignee").value ? +S.qs("#er-assignee").value : null, end_date: S.qs("#er-end").value || null, active: S.qs("#er-active").checked };
+      try { await S.api(`/api/boards/recurring/${r.id}`, { method: "PATCH", body }); S.toast("Recurring task updated", "ok"); m.close(); parent.close(); openBox(box.id); }
+      catch (e) { S.toast(e.detail, "err"); }
+    };
+  }
+
+  function editReconForm(r, box, parent) {
+    const m = S.modal({
+      title: "Edit reconciliation",
+      body: `<label class="field"><span>Trigger</span><select id="ec-trigger">${vocab.recon_triggers.map((t) => `<option ${t === r.trigger_type ? "selected" : ""}>${t}</option>`).join("")}</select></label>
+        <label class="field"><span>Description</span><textarea id="ec-desc">${S.esc(r.description || "")}</textarea></label>
+        <label class="field"><span>Owner</span><select id="ec-owner"><option value="">—</option>${people.map((p) => `<option value="${p.id}" ${r.owner_id === p.id ? "selected" : ""}>${S.esc(p.name)}</option>`).join("")}</select></label>
+        <div class="row" style="gap:10px">
+          <label class="field" style="flex:1"><span>Status</span><select id="ec-status">${vocab.recon_statuses.map((s) => `<option ${s === r.status ? "selected" : ""}>${s}</option>`).join("")}</select></label>
+        </div>
+        <label class="field"><span>Resolution</span><textarea id="ec-res">${S.esc(r.resolution || "")}</textarea></label>`,
+      footer: `<button class="btn ghost" id="ec-cancel">Cancel</button><button class="btn primary" id="ec-save">Save</button>`,
+    });
+    S.qs("#ec-cancel").onclick = m.close;
+    S.qs("#ec-save").onclick = async () => {
+      const body = { trigger_type: S.qs("#ec-trigger").value, description: S.qs("#ec-desc").value || null, owner_id: S.qs("#ec-owner").value ? +S.qs("#ec-owner").value : null, status: S.qs("#ec-status").value, resolution: S.qs("#ec-res").value || null };
+      try { await S.api(`/api/boards/reconciliation/${r.id}`, { method: "PATCH", body }); S.toast("Reconciliation updated", "ok"); m.close(); parent.close(); openBox(box.id); loadBoard(); }
       catch (e) { S.toast(e.detail, "err"); }
     };
   }

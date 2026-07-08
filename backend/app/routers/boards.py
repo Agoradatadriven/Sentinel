@@ -179,6 +179,21 @@ def update_box(box_id: int, payload: BoxUpdateIn, user: User = Depends(get_curre
     return box_detail(box, db)
 
 
+@router.delete("/{box_id}")
+def delete_box(box_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    box = _get_box(box_id, db)
+    _require_edit(user, box)
+    # Detach single tasks (keep their history); sub-objects cascade with the box.
+    db.query(Task).filter(Task.service_box_id == box.id).update(
+        {Task.service_box_id: None}, synchronize_session=False
+    )
+    db.delete(box)
+    db.commit()
+    audit.record(db, actor_id=user.id, table_name="service_boxes", record_id=box_id, action="delete",
+                 old={"service_line": box.service_line, "client_id": box.client_id})
+    return {"ok": True}
+
+
 @router.post("/{box_id}/stage")
 def move_stage(box_id: int, payload: StageMoveIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     box = _get_box(box_id, db)
@@ -263,6 +278,17 @@ def update_recurring(tpl_id: int, payload: RecurringUpdateIn, user: User = Depen
     return recurring_dict(tpl, db)
 
 
+@router.delete("/recurring/{tpl_id}")
+def delete_recurring(tpl_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    tpl = db.get(RecurringTemplate, tpl_id)
+    if not tpl:
+        raise HTTPException(status_code=404, detail="Recurring task not found")
+    _require_edit(user, tpl.box)
+    db.delete(tpl)  # cascades its occurrences
+    db.commit()
+    return {"ok": True}
+
+
 @router.post("/recurring/{tpl_id}/occurrence")
 def check_occurrence(tpl_id: int, payload: OccurrenceCheckIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Tick (or untick) one occurrence. The assignee may check off their own; managers/leader too."""
@@ -331,6 +357,17 @@ def update_recon(recon_id: int, payload: ReconUpdateIn, user: User = Depends(get
     return recon_dict(r, db)
 
 
+@router.delete("/reconciliation/{recon_id}")
+def delete_recon(recon_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    r = db.get(ReconciliationCase, recon_id)
+    if not r:
+        raise HTTPException(status_code=404, detail="Reconciliation case not found")
+    _require_edit(user, r.box)
+    db.delete(r)
+    db.commit()
+    return {"ok": True}
+
+
 # --- Approval track (revision rounds) --------------------------------------
 @router.post("/{box_id}/revision")
 def add_revision(box_id: int, payload: RevisionCreateIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -360,6 +397,17 @@ def update_revision(rev_id: int, payload: RevisionUpdateIn, user: User = Depends
         setattr(r, field, value)
     db.commit()
     return revision_dict(r)
+
+
+@router.delete("/revision/{rev_id}")
+def delete_revision(rev_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    r = db.get(BoxRevision, rev_id)
+    if not r:
+        raise HTTPException(status_code=404, detail="Revision not found")
+    _require_edit(user, r.box)
+    db.delete(r)
+    db.commit()
+    return {"ok": True}
 
 
 # --- Performance & personal queue ------------------------------------------

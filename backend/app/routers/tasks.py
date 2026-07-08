@@ -162,6 +162,21 @@ def update_task(task_id: int, payload: TaskUpdateIn, user: User = Depends(get_cu
     return task_detail(task, db)
 
 
+@router.delete("/{task_id}")
+def delete_task(task_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    task = db.get(Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    # Deleting is destructive — managers / AM / the team lead of the task's scope only.
+    if not (user.role in AM_PLUS or user.role == ROLE_TEAM_LEAD) or not _can_view(user, task):
+        raise HTTPException(status_code=403, detail="Not permitted to delete this task")
+    db.delete(task)
+    db.commit()
+    audit.record(db, actor_id=user.id, table_name="tasks", record_id=task_id, action="delete",
+                 old={"title": task.title})
+    return {"ok": True}
+
+
 @router.patch("/{task_id}/status")
 def move_status(task_id: int, payload: TaskStatusIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if payload.status not in TASK_STATUSES:
