@@ -10,7 +10,7 @@ window.pageInit = async (S) => {
   const canAddClient = S.can("account_manager"); // POST /api/clients is AM+
   const canRank = S.can("team_lead");           // personnel ranking is team-lead+
 
-  const [vocab, clients, people] = await Promise.all([
+  let [vocab, clients, people] = await Promise.all([
     S.api("/api/vocab"), S.api("/api/clients"), S.api("/api/people"),
   ]);
   const peopleById = Object.fromEntries(people.map((p) => [p.id, p]));
@@ -24,6 +24,11 @@ window.pageInit = async (S) => {
     "Closed": { cls: "grey", dot: "var(--muted)" },
   };
   const stageChip = (st) => `<span class="pill ${(STAGE_META[st] || {}).cls || "grey"}">${S.esc(st)}</span>`;
+
+  // Per-client colour accent — persisted on the client, or a stable fallback from this palette
+  // (so a client without a chosen colour still gets a distinct, consistent hue).
+  const CLIENT_PALETTE = ["#54B948", "#378add", "#9484FB", "#F2820C", "#17C3B2", "#EC4899", "#F59E0B", "#06B6D4", "#8B5CF6", "#E24B4A"];
+  const clientColor = (c) => (c && c.color) || CLIENT_PALETTE[(((c && c.id) || 1) - 1) % CLIENT_PALETTE.length];
 
   let clientList = clients.slice();
   let tab = "board";
@@ -50,7 +55,7 @@ window.pageInit = async (S) => {
       <div id="tt-body"></div>`;
 
     S.qsa("#tt-tabs .tt-tab").forEach((b) => (b.onclick = () => { tab = b.dataset.tab; render(); }));
-    if (canAddClient) S.qs("#add-client").onclick = addClientForm;
+    if (canAddClient) S.qs("#add-client").onclick = () => clientForm();
     if (canManage) S.qs("#add-service").onclick = () => addServiceForm();
 
     if (tab === "board") boardView();
@@ -95,7 +100,7 @@ window.pageInit = async (S) => {
     if (!el) return;
     if (!data.clients.length) {
       el.innerHTML = `<div class="tt-empty">${S.ICON.board}<p>No clients yet.</p>${canAddClient ? '<button class="btn primary sm" id="empty-add">Add your first client</button>' : ""}</div>`;
-      if (canAddClient) S.qs("#empty-add").onclick = addClientForm;
+      if (canAddClient) S.qs("#empty-add").onclick = () => clientForm();
       return;
     }
     const boxesByClientStage = {};
@@ -108,15 +113,17 @@ window.pageInit = async (S) => {
       <div class="tt-colhead tt-clienthead">Clients</div>
       ${STAGES.map((s) => `<div class="tt-colhead"><span class="tt-cdot" style="background:${STAGE_META[s].dot}"></span>${S.esc(s)}</div>`).join("")}`;
 
-    data.clients.forEach((c) => {
-      html += `<div class="tt-client">
-        <span class="tt-cname" data-client="${c.id}">${S.ICON.users}${S.esc(c.name)}</span>
+    data.clients.forEach((c, ri) => {
+      const par = ri % 2 === 0 ? "tt-r0" : "tt-r1";   // alternating green / faded-green rows
+      const col = clientColor(c);
+      html += `<div class="tt-client ${par}" style="--cc:${col}">
+        <span class="tt-cname" data-client="${c.id}"><span class="tt-cdotc" style="background:${col}"></span>${S.esc(c.name)}</span>
         <span class="tt-csub">${c.box_count} service${c.box_count === 1 ? "" : "s"}${c.since ? " · since " + S.fmtDate(c.since + "T00:00:00+08:00") : ""}</span>
         ${canManage ? `<button class="tt-addsvc" data-client="${c.id}" title="Add service">${S.ICON.plus}</button>` : ""}
       </div>`;
       STAGES.forEach((st) => {
         const boxes = (boxesByClientStage[c.id] || {})[st] || [];
-        html += `<div class="tt-cell">${boxes.map(boxCard).join("")}</div>`;
+        html += `<div class="tt-cell ${par}">${boxes.map(boxCard).join("")}</div>`;
       });
     });
     html += `</div>`;
@@ -358,8 +365,14 @@ window.pageInit = async (S) => {
     const row = (k, v) => `<div class="panel-row"><span class="pk">${k}</span><span class="pv">${v}</span></div>`;
     const svc = boxes.map((b) => `<div class="panel-row"><span class="pk">${S.esc(b.service_line)}</span><span class="pv">${stageChip(b.stage)} ${b.team_leader ? '<span class="muted">· ' + S.esc(b.team_leader.name.split(" ")[0]) + "</span>" : ""}</span></div>`).join("")
       || `<div class="muted">No services yet.</div>`;
+    const col = clientColor(c);
     const body = `
+      ${canAddClient ? `<div class="row" style="gap:8px;margin-bottom:14px">
+        <button class="btn sm ghost" id="cp-edit">${S.ICON.gear}Edit</button>
+        <button class="btn sm ghost danger-text" id="cp-del">${S.ICON.x}Delete</button>
+      </div>` : ""}
       <div class="panel-section"><h3>Account</h3>
+        ${row("Colour", `<span class="tt-cdotc" style="background:${col};vertical-align:middle"></span>`)}
         ${row("Name", S.esc(c.name || "—"))}
         ${row("Contact", c.contact_email ? `<span style="color:var(--violet-d)">${S.esc(c.contact_email)}</span>` : "—")}
         ${row("Atrium link", c.atrium_client_id ? S.esc(c.atrium_client_id) : "—")}
@@ -374,6 +387,15 @@ window.pageInit = async (S) => {
       ${canManage ? `<button class="btn primary block" id="cp-add">${S.ICON.plus}Add a service for ${S.esc(c.name)}</button>` : ""}`;
     const m = S.modal({ title: c.name || "Client", body });
     if (S.qs("#cp-add")) S.qs("#cp-add").onclick = () => { m.close(); addServiceForm(cid); };
+    if (S.qs("#cp-edit")) S.qs("#cp-edit").onclick = () => { m.close(); clientForm(c); };
+    if (S.qs("#cp-del")) S.qs("#cp-del").onclick = async () => {
+      if (!confirm(`Delete "${c.name}"? This also removes its ${boxes.length} service box(es) and detaches their tasks. This can't be undone.`)) return;
+      try {
+        await S.api("/api/clients/" + cid, { method: "DELETE" });
+        clients = clients.filter((x) => x.id !== cid); clientList = clients.slice();
+        S.toast("Client deleted", "ok"); m.close(); render();
+      } catch (e) { S.toast(e.detail || "Couldn't delete client", "err"); }
+    };
   }
 
   // ---------------- PERSONNEL ----------------
@@ -436,24 +458,43 @@ window.pageInit = async (S) => {
   }
 
   // ---------------- FORMS ----------------
-  function addClientForm() {
+  function clientForm(existing) {
+    const e = existing || {};
+    const isEdit = !!(e && e.id);
+    let selected = clientColor(isEdit ? e : { id: clients.length + 1 });
+    const swatches = CLIENT_PALETTE.map((hex) =>
+      `<button type="button" class="tt-sw ${hex.toLowerCase() === selected.toLowerCase() ? "sel" : ""}" data-hex="${hex}" style="background:${hex}"></button>`).join("");
     const m = S.modal({
-      title: "Add client",
-      body: `<label class="field"><span>Name</span><input id="c-name" placeholder="Client name"></label>
-        <label class="field"><span>Contact email</span><input id="c-email" placeholder="ops@client.com"></label>
-        <label class="field"><span>Atrium client key (optional)</span><input id="c-atrium" placeholder="bridges to Atrium"></label>`,
-      footer: `<button class="btn ghost" id="c-cancel">Cancel</button><button class="btn primary" id="c-save">Add client</button>`,
+      title: isEdit ? "Edit client" : "Add client",
+      body: `<label class="field"><span>Name</span><input id="c-name" value="${S.esc(e.name || "")}" placeholder="Client name"></label>
+        <label class="field"><span>Contact email</span><input id="c-email" value="${S.esc(e.contact_email || "")}" placeholder="ops@client.com"></label>
+        <label class="field"><span>Atrium client key (optional)</span><input id="c-atrium" value="${S.esc(e.atrium_client_id || "")}" placeholder="bridges to Atrium"></label>
+        <label class="field"><span>Board colour</span>
+          <div class="tt-swatches" id="c-sw">${swatches}
+            <label class="tt-sw-custom" title="Custom colour"><input type="color" id="c-color" value="${selected}"></label>
+          </div>
+        </label>`,
+      footer: `<button class="btn ghost" id="c-cancel">Cancel</button><button class="btn primary" id="c-save">${isEdit ? "Save changes" : "Add client"}</button>`,
     });
+    const paint = () => S.qsa("#c-sw .tt-sw").forEach((b) => b.classList.toggle("sel", b.dataset.hex.toLowerCase() === selected.toLowerCase()));
+    S.qsa("#c-sw .tt-sw").forEach((b) => (b.onclick = () => { selected = b.dataset.hex; S.qs("#c-color").value = selected; paint(); }));
+    S.qs("#c-color").oninput = (ev) => { selected = ev.target.value; paint(); };
     S.qs("#c-cancel").onclick = m.close;
     S.qs("#c-save").onclick = async () => {
       const name = S.qs("#c-name").value.trim();
       if (!name) return S.toast("Name is required", "err");
+      const body = { name, contact_email: S.qs("#c-email").value || null, atrium_client_id: S.qs("#c-atrium").value || null, color: selected };
       try {
-        const c = await S.api("/api/clients", { method: "POST", body: { name, contact_email: S.qs("#c-email").value || null, atrium_client_id: S.qs("#c-atrium").value || null } });
-        if (c && c.error) throw { detail: c.error };
-        clients.push(c); clientList = clients.slice();
-        S.toast("Client added", "ok"); m.close(); render();
-      } catch (e) { S.toast(e.detail || "Couldn't add client", "err"); }
+        if (isEdit) {
+          const c = await S.api("/api/clients/" + e.id, { method: "PATCH", body });
+          clients = clients.map((x) => (x.id === c.id ? c : x));
+        } else {
+          const c = await S.api("/api/clients", { method: "POST", body });
+          clients.push(c);
+        }
+        clientList = clients.slice();
+        S.toast(isEdit ? "Client updated" : "Client added", "ok"); m.close(); render();
+      } catch (e) { S.toast(e.detail || "Couldn't save client", "err"); }
     };
   }
 

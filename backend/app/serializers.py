@@ -96,6 +96,7 @@ def client_dict(c: Client) -> dict:
         "name": c.name,
         "contact_email": c.contact_email,
         "atrium_client_id": c.atrium_client_id,
+        "color": c.color,
     }
 
 

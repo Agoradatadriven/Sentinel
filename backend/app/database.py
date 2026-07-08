@@ -52,6 +52,7 @@ def create_all() -> None:
 # New columns added to already-existing tables (table -> [(column, sql_type)]).
 _ADDED_COLUMNS = {
     "users": [("monthly_salary", "FLOAT")],
+    "clients": [("color", "VARCHAR(9)")],
     # Task Tracker v0.3 — link one-off tasks to their service box + performance fields.
     "tasks": [
         ("service_box_id", "INTEGER"),

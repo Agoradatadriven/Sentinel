@@ -18,4 +18,6 @@ class Client(Base):
     contact_email: Mapped[str | None] = mapped_column(String(160), nullable=True)
     # Links a Sentinel client to its Atrium workspace key (the AM bridges the two systems).
     atrium_client_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Board colour accent (hex, e.g. "#54B948") — makes a client's row easy to track across stages.
+    color: Mapped[str | None] = mapped_column(String(9), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)

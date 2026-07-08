@@ -246,6 +246,14 @@ class ClientCreateIn(BaseModel):
     name: str
     contact_email: str | None = None
     atrium_client_id: str | None = None
+    color: str | None = None
+
+
+class ClientUpdateIn(BaseModel):
+    name: str | None = None
+    contact_email: str | None = None
+    atrium_client_id: str | None = None
+    color: str | None = None
 
 
 # --- People ----------------------------------------------------------------

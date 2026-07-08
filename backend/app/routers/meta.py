@@ -1,7 +1,7 @@
 """Reference data for the frontend: teams, clients, and the enum vocabularies used in dropdowns."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -39,15 +39,66 @@ def clients(user: User = Depends(get_current_user), db: Session = Depends(get_db
     return [client_dict(c) for c in db.execute(select(Client).order_by(Client.name)).scalars().all()]
 
 
-@router.post("/clients", dependencies=[Depends(require_roles("account_manager", "admin", "super_admin"))])
+CLIENT_EDITORS = ("account_manager", "admin", "super_admin")
+
+
+@router.post("/clients", dependencies=[Depends(require_roles(*CLIENT_EDITORS))])
 def create_client(payload: dict, db: Session = Depends(get_db)):
     name = (payload or {}).get("name", "").strip()
     if not name:
-        return {"error": "name required"}
-    c = Client(name=name, contact_email=payload.get("contact_email"), atrium_client_id=payload.get("atrium_client_id"))
+        raise HTTPException(status_code=400, detail="Client name is required")
+    if db.execute(select(Client).where(Client.name == name)).scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="A client with that name already exists")
+    c = Client(
+        name=name,
+        contact_email=payload.get("contact_email") or None,
+        atrium_client_id=payload.get("atrium_client_id") or None,
+        color=payload.get("color") or None,
+    )
     db.add(c)
     db.commit()
     return client_dict(c)
+
+
+@router.patch("/clients/{client_id}", dependencies=[Depends(require_roles(*CLIENT_EDITORS))])
+def update_client(client_id: int, payload: dict, db: Session = Depends(get_db)):
+    c = db.get(Client, client_id)
+    if not c:
+        raise HTTPException(status_code=404, detail="Client not found")
+    if "name" in payload:
+        name = (payload.get("name") or "").strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="Client name cannot be empty")
+        clash = db.execute(select(Client).where(Client.name == name, Client.id != client_id)).scalar_one_or_none()
+        if clash:
+            raise HTTPException(status_code=409, detail="A client with that name already exists")
+        c.name = name
+    if "contact_email" in payload:
+        c.contact_email = payload.get("contact_email") or None
+    if "atrium_client_id" in payload:
+        c.atrium_client_id = payload.get("atrium_client_id") or None
+    if "color" in payload:
+        c.color = payload.get("color") or None
+    db.commit()
+    return client_dict(c)
+
+
+@router.delete("/clients/{client_id}", dependencies=[Depends(require_roles(*CLIENT_EDITORS))])
+def delete_client(client_id: int, db: Session = Depends(get_db)):
+    from ..models import ServiceBox, Task
+
+    c = db.get(Client, client_id)
+    if not c:
+        raise HTTPException(status_code=404, detail="Client not found")
+    # Detach single tasks, then remove the client's service boxes (cascades to their sub-objects).
+    db.query(Task).filter(Task.client_id == client_id).update(
+        {Task.client_id: None, Task.service_box_id: None}, synchronize_session=False
+    )
+    for box in db.execute(select(ServiceBox).where(ServiceBox.client_id == client_id)).scalars().all():
+        db.delete(box)
+    db.delete(c)
+    db.commit()
+    return {"ok": True}
 
 
 @router.get("/vocab")

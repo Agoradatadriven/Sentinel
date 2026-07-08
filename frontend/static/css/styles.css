@@ -415,12 +415,30 @@ textarea { resize: vertical; min-height: 78px; }
   color: var(--muted); border-bottom: 1px solid var(--line); background: var(--row-alt); display: flex; align-items: center; gap: 6px; }
 .tt-clienthead { background: var(--input); }
 .tt-cdot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-.tt-client { padding: 12px; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line); background: var(--row-alt);
-  display: flex; flex-direction: column; gap: 4px; position: relative; }
-.tt-cname { font-weight: 700; font-size: 13.5px; color: var(--violet-d); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.tt-client { padding: 12px 12px 12px 14px; border-bottom: 1px solid var(--line); border-right: 1px solid var(--line);
+  border-left: 4px solid var(--cc, var(--green)); display: flex; flex-direction: column; gap: 4px; position: relative; }
+.tt-cname { font-weight: 700; font-size: 13.5px; color: var(--violet-d); cursor: pointer; display: inline-flex; align-items: center; gap: 2px; }
 .tt-cname .svg-ic { width: 15px; height: 15px; }
 .tt-cname:hover { color: var(--violet); text-decoration: underline; }
 .tt-csub { font-size: 11px; color: var(--muted); }
+.tt-cdotc { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 7px; flex: none; }
+
+/* Alternating green / faded-green rows so a client is easy to track across stages */
+.tt-r0 { background: rgba(84, 185, 72, .11); }
+.tt-r1 { background: rgba(84, 185, 72, .035); }
+:root[data-theme="dark"] .tt-r0 { background: rgba(84, 185, 72, .13); }
+:root[data-theme="dark"] .tt-r1 { background: rgba(84, 185, 72, .05); }
+.tt-client.tt-r0 { background: rgba(84, 185, 72, .16); }
+.tt-client.tt-r1 { background: rgba(84, 185, 72, .07); }
+
+/* Colour swatch picker (client form) */
+.tt-swatches { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tt-sw { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); }
+.tt-sw.sel { border-color: var(--text); transform: scale(1.08); }
+.tt-sw-custom { width: 26px; height: 26px; border-radius: 50%; overflow: hidden; border: 1px dashed var(--line-strong); display: grid; place-items: center; cursor: pointer; position: relative; }
+.tt-sw-custom input[type="color"] { position: absolute; inset: -4px; width: 34px; height: 34px; border: none; padding: 0; background: none; cursor: pointer; }
+.danger-text { color: var(--danger); }
+.danger-text:hover { border-color: var(--danger); }
 .tt-addsvc { position: absolute; top: 8px; right: 8px; border: 1px solid var(--line); background: var(--card); border-radius: 8px;
   width: 24px; height: 24px; display: grid; place-items: center; cursor: pointer; color: var(--sub); padding: 0; }
 .tt-addsvc:hover { border-color: var(--green); color: var(--green-d); }
